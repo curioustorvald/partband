@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Partitioned Container Band Layout</title>
+  <script src="common.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .gallery {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+    }
+    .band {
+      display: grid;
+      width: 100%;
+      height: 200px;
+      gap: 4px;
+    }
+    .panel {
+      background-size: cover;
+      background-position: center;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body onload="pack()">
+  <h1 style="text-align: center">Partitioned Container Band Layout</h1>
+  <div class="gallery" id="gallery"></div>
+</body>
+</html>
