@@ -53,31 +53,127 @@ function aspectRatio(image) {
 
 function selectRule(image) {
   const ratio = aspectRatio(image);
-  if (ratio > 1.3) return 'A'; // Wide or standard landscape
-  if (ratio < 0.8) return 'E1'; // Tall
-  return 'C'; // Standard
+  if (ratio > 1.8) return 'B';
+  if (ratio > 1.5) return 'A';
+  if (ratio > 1.2) return 'C';
+  if (ratio > 1.0) return 'D';
+  if (ratio > 0.8) return 'E1';
+  if (ratio > 0.6) return 'F';
+  if (ratio > 0.5) return 'G';
+  return 'H';
+}
+
+function computeBandHeight(images) {
+  const avgHeight = images.reduce((sum, img) => sum + img.height, 0) / images.length;
+  return Math.max(150, Math.min(300, avgHeight));
 }
 
 function makeBand(rule, images) {
+  const wrapper = document.createElement('div');
+  wrapper.style.display = 'flex';
+  wrapper.style.flexDirection = 'column';
+
+  const label = document.createElement('div');
+  label.textContent = `Rule: ${rule}`;
+  label.style.fontSize = '12px';
+  label.style.fontWeight = 'bold';
+  label.style.marginBottom = '4px';
+  label.style.color = '#555';
+  label.style.paddingLeft = '2px';
+
   const band = document.createElement('div');
   band.className = 'band';
+  band.style.height = computeBandHeight(images) + 'px';
 
   switch (rule) {
-    case 'A': // Type A
+    case 'B': // 2x2 with different side image
       band.style.gridTemplateColumns = '2fr 1fr';
       band.style.gridTemplateRows = '1fr 1fr';
-      band.append(...['A', 'B'].map((_, i) => {
-        const img = images[i];
+      [0, 1].forEach((i) => {
+        const div = document.createElement('div');
+        div.className = 'panel';
+        div.style.gridColumn = i === 0 ? '1' : '2';
+        div.style.gridRow = '1 / span 2';
+        div.style.backgroundImage = `url(${images[i].src})`;
+        band.appendChild(div);
+      });
+      break;
+
+    case 'D': // 3-row with staggered right column
+      band.style.gridTemplateColumns = '2fr 1fr';
+      band.style.gridTemplateRows = '1fr 1fr 1fr';
+      const dMain = document.createElement('div');
+      dMain.className = 'panel';
+      dMain.style.gridColumn = '1';
+      dMain.style.gridRow = '1 / span 3';
+      dMain.style.backgroundImage = `url(${images[0].src})`;
+      const dFills = [images[1], images[2], images[3]];
+      dFills.forEach((img, i) => {
+        const div = document.createElement('div');
+        div.className = 'panel';
+        div.style.gridColumn = '2';
+        div.style.gridRow = `${i + 1}`;
+        div.style.backgroundImage = `url(${img.src})`;
+        band.appendChild(div);
+      });
+      band.appendChild(dMain);
+      break;
+
+    case 'G': // 3-column with asymmetric right image
+      band.style.gridTemplateColumns = '1fr 1fr 1fr';
+      band.style.gridTemplateRows = '1fr 1fr';
+      [0, 1, 2].forEach((i) => {
+        const div = document.createElement('div');
+        div.className = 'panel';
+        div.style.gridColumn = i + 1;
+        div.style.gridRow = '1';
+        div.style.backgroundImage = `url(${images[i].src})`;
+        band.appendChild(div);
+      });
+      [3, 4].forEach((i, j) => {
+        const div = document.createElement('div');
+        div.className = 'panel';
+        div.style.gridColumn = j + 2;
+        div.style.gridRow = '2';
+        div.style.backgroundImage = `url(${images[i].src})`;
+        band.appendChild(div);
+      });
+      break;
+
+    case 'H': // 3-column mirrored vertical split
+      band.style.gridTemplateColumns = '1fr 1fr 1fr';
+      band.style.gridTemplateRows = '1fr 1fr';
+      [0, 1, 2].forEach((i) => {
+        const div = document.createElement('div');
+        div.className = 'panel';
+        div.style.gridColumn = i + 1;
+        div.style.gridRow = '1';
+        div.style.backgroundImage = `url(${images[i].src})`;
+        band.appendChild(div);
+      });
+      [3, 4, 5].forEach((i, j) => {
+        const div = document.createElement('div');
+        div.className = 'panel';
+        div.style.gridColumn = j + 1;
+        div.style.gridRow = '2';
+        div.style.backgroundImage = `url(${images[i].src})`;
+        band.appendChild(div);
+      });
+      break;
+    case 'A': // 2-column, 2-row
+      band.style.gridTemplateColumns = '2fr 1fr';
+      band.style.gridTemplateRows = '1fr 1fr';
+      images.slice(0, 2).forEach((img, i) => {
         const div = document.createElement('div');
         div.className = 'panel';
         div.style.gridColumn = i === 0 ? '1' : '2';
         div.style.gridRow = '1 / span 2';
         div.style.backgroundImage = `url(${img.src})`;
-        return div;
-      }));
+        band.appendChild(div);
+      });
       break;
 
-    case 'C': // Type C
+    case 'C': // 2-column, 3-row
       band.style.gridTemplateColumns = '2fr 1fr';
       band.style.gridTemplateRows = '1fr 1fr 1fr';
       const cMain = document.createElement('div');
@@ -85,34 +181,48 @@ function makeBand(rule, images) {
       cMain.style.gridColumn = '1';
       cMain.style.gridRow = '1 / span 3';
       cMain.style.backgroundImage = `url(${images[0].src})`;
-      const cFill1 = document.createElement('div');
-      cFill1.className = 'panel';
-      cFill1.style.gridColumn = '2';
-      cFill1.style.gridRow = '1 / span 2';
-      cFill1.style.backgroundImage = `url(${images[1].src})`;
-      const cFill2 = document.createElement('div');
-      cFill2.className = 'panel';
-      cFill2.style.gridColumn = '2';
-      cFill2.style.gridRow = '3';
-      cFill2.style.backgroundImage = `url(${images[2].src})`;
-      band.append(cMain, cFill1, cFill2);
+      const cFills = [images[1], images[2]];
+      cFills.forEach((img, i) => {
+        const div = document.createElement('div');
+        div.className = 'panel';
+        div.style.gridColumn = '2';
+        div.style.gridRow = i < 1 ? '1 / span 2' : '3';
+        div.style.backgroundImage = `url(${img.src})`;
+        band.appendChild(div);
+      });
+      band.appendChild(cMain);
       break;
 
-    case 'E1': // Type E1
+    case 'E1': // 3-column, 2-row
       band.style.gridTemplateColumns = '1fr 1fr 1fr';
       band.style.gridTemplateRows = '1fr 1fr';
-      images.forEach((img, i) => {
+      images.slice(0, 6).forEach((img, i) => {
+        const div = document.createElement('div');
+        div.className = 'panel';
+        div.style.gridColumn = (i % 3) + 1;
+        div.style.gridRow = i < 3 ? 1 : 2;
+        div.style.backgroundImage = `url(${img.src})`;
+        band.appendChild(div);
+      });
+      break;
+
+    case 'F': // 3-column mixed
+      band.style.gridTemplateColumns = '1fr 1fr 1fr';
+      band.style.gridTemplateRows = '1fr 1fr';
+      images.slice(0, 5).forEach((img, i) => {
         const div = document.createElement('div');
         div.className = 'panel';
         div.style.backgroundImage = `url(${img.src})`;
-        div.style.gridColumn = (i % 3) + 1;
+        div.style.gridColumn = [1, 2, 3, 2, 3][i];
         div.style.gridRow = i < 3 ? 1 : 2;
         band.appendChild(div);
       });
       break;
   }
 
-  return band;
+  wrapper.appendChild(label);
+  wrapper.appendChild(band);
+  return wrapper;
 }
 
 function renderGallery() {
@@ -124,7 +234,18 @@ function renderGallery() {
   while (important.length > 0) {
     const main = important.pop();
     const rule = selectRule(main);
-    let needed = rule === 'A' ? 1 : rule === 'C' ? 2 : 5;
+    let needed;
+    switch (rule) {
+      case 'A': needed = 1; break;
+      case 'B': needed = 1; break;
+      case 'C': needed = 2; break;
+      case 'D': needed = 3; break;
+      case 'E1': needed = 5; break;
+      case 'F': needed = 4; break;
+      case 'G': needed = 4; break;
+      case 'H': needed = 5; break;
+      default: needed = 2;
+    }
     const fillers = lesser.splice(0, needed);
     if (fillers.length < needed) break;
     const band = makeBand(rule, [main, ...fillers]);
