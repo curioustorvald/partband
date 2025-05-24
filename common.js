@@ -52,32 +52,48 @@ function generateRandomSeq(seed, size) {
       return image.width / image.height;
     }
 
-    function selectRule(image) {
-      const ratio = aspectRatio(image);
-      if (ratio > 1.8) return 'B';
-      if (ratio > 1.5) return 'A';
-      if (ratio > 1.2) return 'C';
-      if (ratio > 1.0) return 'D';
-      if (ratio > 0.8) return 'E1';
-      if (ratio > 0.6) return 'F';
-      if (ratio > 0.5) return 'G';
+    function selectRule(image, containerWidth) {
+      const targetMainWidth = containerWidth * 0.66;
+      const targetAspectRatio = targetMainWidth / image.height;
+      const actualAspectRatio = image.width / image.height;
+      const delta = Math.abs(actualAspectRatio - targetAspectRatio);
+
+      if (delta < 0.2 && actualAspectRatio > 1.8) return 'B';
+      if (delta < 0.3 && actualAspectRatio > 1.5) return 'A';
+      if (delta < 0.4 && actualAspectRatio > 1.2) return 'C';
+      if (delta < 0.5 && actualAspectRatio > 1.0) return 'D';
+      if (actualAspectRatio > 0.8) return 'E1';
+      if (actualAspectRatio > 0.6) return 'F';
+      if (actualAspectRatio > 0.5) return 'G';
       return 'H';
     }
 
-    function computeBandHeight(images) {
-      const avgHeight = images.reduce((sum, img) => sum + img.height, 0) / images.length;
-      return Math.max(150, Math.min(300, avgHeight));
+    function computeBandHeight(images, rule, containerWidth) {
+      const mainImage = images[0];
+      let mainCols = 2, mainRows = 1;
+      switch (rule) {
+        case 'A': case 'B': mainCols = 2; mainRows = 2; break;
+        case 'C': case 'D': mainCols = 2; mainRows = 3; break;
+        case 'E1': case 'E2': mainCols = 1; mainRows = 2; break;
+        case 'F': case 'H': mainCols = 1; mainRows = 2; break;
+        case 'G': mainCols = 1; mainRows = 2; break;
+        case 'I': mainCols = 1; mainRows = 2; break;
+      }
+      const colWidth = containerWidth * (mainCols / 3);
+      const height = colWidth / (mainImage.width / mainImage.height) / mainRows;
+      return Math.max(100, Math.min(400, height));
     }
 
-    function panel(image, col, row) {
+    function panel(image, col, row, flip) {
   const div = document.createElement('div');
   div.className = 'panel';
-  div.style.gridColumn = col;
+  div.style.gridColumn = flip ? (4 - col) : col;
   div.style.gridRow = row;
   div.style.backgroundImage = `url(${image.src})`;
   return div;
 }
 
+let bandCount = 0
 function makeBand(rule, images) {
       const wrapper = document.createElement('div');
       wrapper.style.display = 'flex';
@@ -91,7 +107,9 @@ function makeBand(rule, images) {
       label.style.color = '#555';
       label.style.paddingLeft = '2px';
 
+      bandCount++;
       const band = document.createElement('div');
+      const flip = false//bandCount % 2 === 0;
       band.className = 'band';
       band.style.height = computeBandHeight(images) + 'px';
 
@@ -99,86 +117,86 @@ function makeBand(rule, images) {
         case 'A': // Type A
           band.style.gridTemplateColumns = '2fr 1fr';
           band.style.gridTemplateRows = '1fr 1fr';
-          band.appendChild(panel(images[0], 1, '1 / span 2'));
-          band.appendChild(panel(images[1], 2, '1 / span 2'));
+          band.appendChild(panel(images[0], 1, '1 / span 2', flip));
+          band.appendChild(panel(images[1], 2, '1 / span 2', flip));
           break;
 
         case 'B': // Type B (adjustable B-C)
           band.style.gridTemplateColumns = '2fr 1fr';
           band.style.gridTemplateRows = '1fr 1fr';
-          band.appendChild(panel(images[0], 1, '1 / span 2'));
-          band.appendChild(panel(images[1], 2, '1'));
-          band.appendChild(panel(images[2], 2, '2'));
+          band.appendChild(panel(images[0], 1, '1 / span 2', flip));
+          band.appendChild(panel(images[1], 2, '1', flip));
+          band.appendChild(panel(images[2], 2, '2', flip));
           break;
 
         case 'C': // Type C (adjustable B-C)
           band.style.gridTemplateColumns = '2fr 1fr';
           band.style.gridTemplateRows = '1fr 1fr 1fr';
-          band.appendChild(panel(images[0], 1, '1 / span 3'));
-          band.appendChild(panel(images[1], 2, '1 / span 2'));
-          band.appendChild(panel(images[2], 2, '3'));
+          band.appendChild(panel(images[0], 1, '1 / span 3', flip));
+          band.appendChild(panel(images[1], 2, '1 / span 2', flip));
+          band.appendChild(panel(images[2], 2, '3', flip));
           break;
 
         case 'D': // Type D (adjustable B-C, C-D)
           band.style.gridTemplateColumns = '2fr 1fr';
           band.style.gridTemplateRows = '1fr 1fr 1fr';
-          band.appendChild(panel(images[0], 1, '1 / span 3'));
-          band.appendChild(panel(images[1], 2, '1'));
-          band.appendChild(panel(images[2], 2, '2'));
-          band.appendChild(panel(images[3], 2, '3'));
+          band.appendChild(panel(images[0], 1, '1 / span 3', flip));
+          band.appendChild(panel(images[1], 2, '1', flip));
+          band.appendChild(panel(images[2], 2, '2', flip));
+          band.appendChild(panel(images[3], 2, '3', flip));
           break;
 
         case 'E1': // Type E1 (adjustable B-D, C-E)
           band.style.gridTemplateColumns = '1fr 1fr 1fr';
           band.style.gridTemplateRows = '1fr 1fr';
-          band.appendChild(panel(images[0], 1, '1 / span 2'));
-          band.appendChild(panel(images[1], 2, '1'));
-          band.appendChild(panel(images[2], 3, '1'));
-          band.appendChild(panel(images[3], 2, '2'));
-          band.appendChild(panel(images[4], 3, '2'));
+          band.appendChild(panel(images[0], 1, '1 / span 2', flip));
+          band.appendChild(panel(images[1], 2, '1', flip));
+          band.appendChild(panel(images[2], 3, '1', flip));
+          band.appendChild(panel(images[3], 2, '2', flip));
+          band.appendChild(panel(images[4], 3, '2', flip));
           break;
 
         case 'E2': // Type E2 (adjustable B-C, D-E)
           band.style.gridTemplateColumns = '1fr 1fr 2fr';
           band.style.gridTemplateRows = '1fr 1fr';
-          band.appendChild(panel(images[0], 1, '1 / span 2'));
-          band.appendChild(panel(images[1], 2, '1'));
-          band.appendChild(panel(images[2], 3, '1'));
-          band.appendChild(panel(images[3], 2, '2'));
-          band.appendChild(panel(images[4], 3, '2'));
+          band.appendChild(panel(images[0], 1, '1 / span 2', flip));
+          band.appendChild(panel(images[1], 2, '1', flip));
+          band.appendChild(panel(images[2], 3, '1', flip));
+          band.appendChild(panel(images[3], 2, '2', flip));
+          band.appendChild(panel(images[4], 3, '2', flip));
           break;
 
         case 'F': // Type F (adjustable D-E)
           band.style.gridTemplateColumns = '1fr 2fr';
           band.style.gridTemplateRows = '1fr 1fr';
-          band.appendChild(panel(images[0], 1, '1 / span 2'));
-          band.appendChild(panel(images[1], 2, '1'));
-          band.appendChild(panel(images[2], 2, '2'));
-          band.appendChild(panel(images[3], 3, '2'));
+          band.appendChild(panel(images[0], 1, '1 / span 2', flip));
+          band.appendChild(panel(images[1], 2, '1', flip));
+          band.appendChild(panel(images[2], 2, '2', flip));
+          band.appendChild(panel(images[3], 3, '2', flip));
           break;
 
         case 'G': // Type G (adjustable B-D)
           band.style.gridTemplateColumns = '1fr 1fr 1fr';
           band.style.gridTemplateRows = '1fr 1fr';
-          band.appendChild(panel(images[0], 1, '1 / span 2'));
-          band.appendChild(panel(images[1], 2, '1'));
-          band.appendChild(panel(images[2], 3, '1 / span 2'));
-          band.appendChild(panel(images[3], 2, '2'));
+          band.appendChild(panel(images[0], 1, '1 / span 2', flip));
+          band.appendChild(panel(images[1], 2, '1', flip));
+          band.appendChild(panel(images[2], 3, '1 / span 2', flip));
+          band.appendChild(panel(images[3], 2, '2', flip));
           break;
 
         case 'H': // Type H (adjustable B-D)
           band.style.gridTemplateColumns = '1fr 2fr';
           band.style.gridTemplateRows = '1fr 1fr';
-          band.appendChild(panel(images[0], 1, '1 / span 2'));
-          band.appendChild(panel(images[1], 2, '1'));
-          band.appendChild(panel(images[2], 2, '2'));
+          band.appendChild(panel(images[0], 1, '1 / span 2', flip));
+          band.appendChild(panel(images[1], 2, '1', flip));
+          band.appendChild(panel(images[2], 2, '2', flip));
           break;
 
         case 'I': // Type I (adjustable B-C)
           band.style.gridTemplateColumns = '1fr 1fr 1fr';
           band.style.gridTemplateRows = '1fr 1fr';
           for (let i = 0; i < 6; i++) {
-            band.appendChild(panel(images[i], (i % 3) + 1, i < 3 ? '1' : '2'));
+            band.appendChild(panel(images[i], (i % 3) + 1, i < 3 ? '1' : '2'), flip);
           }
           break;
       }
@@ -220,13 +238,14 @@ function makeBand(rule, images) {
 
 function renderGallery() {
   const gallery = document.getElementById('gallery');
+  const containerWidth = gallery.clientWidth;
   const shuffled = shuffle([...images]);
   const important = shuffled.filter(img => img.importance >= 5);
   const lesser = shuffled.filter(img => img.importance < 5);
 
   while (important.length > 0) {
     const main = important.pop();
-    const rule = selectRule(main);
+    const rule = selectRule(main, containerWidth);
     let needed;
     switch (rule) {
       case 'A': needed = 1; break;
@@ -237,11 +256,15 @@ function renderGallery() {
       case 'F': needed = 4; break;
       case 'G': needed = 4; break;
       case 'H': needed = 5; break;
+      case 'I': needed = 5; break;
       default: needed = 2;
     }
     const fillers = lesser.splice(0, needed);
     if (fillers.length < needed) break;
-    const band = makeBand(rule, [main, ...fillers]);
+    const allImages = [main, ...fillers];
+    const height = computeBandHeight(allImages, rule, containerWidth);
+    const band = makeBand(rule, allImages);
+    band.querySelector('.band').style.height = `${height}px`;
     gallery.appendChild(band);
   }
 }
