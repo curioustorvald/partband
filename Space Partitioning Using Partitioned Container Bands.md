@@ -27,76 +27,92 @@ The proposed image gallery is consists of a stack of Container Bands, which are 
 
 ### Container Band Partitioning Rules
 
-Note that the partition between Panel A and the other panel group is always adjustable
+Note that the “Aspect Ratio” below refers to the aspect ratio of the main image that will occupy the Panel A.
+
+The double lines indicate the “handle” of the layout adjustment.
 
 - Two-row Standard/Wide Aspect Ratio
     
-    
     Type A
-    
-    | A | B |
-    | --- | --- |
-    | A | B |
+    +-------++---+
+    |   A   || B |
+    |       ||   |
+    +-------++---+
     
     Type B (adjustable B-C)
-    
-    | A | B |
-    | --- | --- |
-    | A | C |
+    +-------++---+
+    |   A   || B |
+    |       |+===+
+    |       || C |
+    +-------++---+
+
 - Three-row Standard Aspect Ratio
     
-    
     Type C (adjustable B-C)
-    
-    | A | B |
-    | --- | --- |
-    | A | C |
-    | A | C |
+    +-------++---+
+    |   A   || B |
+    |       |+===+
+    |       || C |
+    |       ||   |
+    +-------++---+
     
     Type D (adjustable B-C, C-D)
-    
-    | A | B |
-    | --- | --- |
-    | A | C |
-    | A | D |
+    +-------++---+
+    |   A   || B |
+    |       |+===+
+    |       || C |
+    |       |+===+
+    |       || D |
+    +-------++---+
+
 - Two-row Tall Aspect Ratio
     
-    
     Type E1 (adjustable B-D, C-E, then BD-CE)
-    
-    | A | B | C |
-    | --- | --- | --- |
-    | A | D | E |
+    +---++---++---+
+    | A || B || C |
+    |   |+===+|   |
+    |   ||   |+===+
+    |   || D || E |
+    +---++---++---+
     
     Type E2 (adjustable B-C, D-E, then BC-DE)
-    
-    | A | B | C |
-    | --- | --- | --- |
-    | A | D | E |
-    
-    Type H (adjustable B-D)
-    
-    | A | B | B |
-    | --- | --- | --- |
-    | A | D | D |
+    +---++---++-----+
+    | A || B || C   |
+    |   ||   ||     |
+    |   |+==========+
+    |   || D   || E |
+    |   ||     ||   |
+    +---++-----++---+
     
     Type F (adjustable D-E, then B-DE)
-    
-    | A | B | B |
-    | --- | --- | --- |
-    | A | D | E |
+    +---++--------+
+    | A || B      |
+    |   |+========+
+    |   || D || E |
+    |   ||   ||   |
+    +---++---++---+
     
     Type G (adjustable B-D, then BD-C)
+    +---++---++---+
+    | A || B || C |
+    |   |+===+|   |
+    |   || D ||   |
+    +---++---++---+
     
-    | A | B | C |
-    | --- | --- | --- |
-    | A | D | C |
-    
+    Type H (adjustable B-D)
+    +---++-------+
+    | A || B     |
+    |   ||       |
+    |   |+=======+
+    |   || D     |
+    +---++-------+
+
     Type I (adjustable B-C)
-    
-    | A | B | C |
-    | --- | --- | --- |
-    | A | B | C |
+    +---++---++---+
+    | A || B || C |
+    |   ||   ||   |
+    |   ||   ||   |
+    +---++---++---+
 
 ## Procedure of Operation
 
