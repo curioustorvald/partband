@@ -255,34 +255,13 @@ class PartitionedBand {
       panel.style.backgroundImage = `url(${imgURL})` // adjust to fit the actual data structure
     })
   }
-  makeDivHorz() {
-    const container = document.createElement('div');
-    container.className = 'band'
-    container.setColRow(2, 1) // always divide by main and sub
+  makeBand() {
+    const container = document.createElement('band');
     if (!this.flipped) {
-      container.style.gridTemplateColumns = `${this.mainPanelWidth}fr 1fr`
       container.appendChild(this.mainPanel)
       container.appendChild(this.subPanel)
     }
     else {
-      container.style.gridTemplateColumns = `1fr ${this.mainPanelWidth}fr`
-      container.appendChild(this.subPanel)
-      container.appendChild(this.mainPanel)
-    }
-
-    return container
-  }
-  makeDivVert() {
-    const container = document.createElement('div');
-    container.className = 'band'
-    container.setColRow(1, 2) // always divide by main and sub
-    if (!this.flipped) {
-      container.style.gridTemplateRows = `${this.mainPanelWidth}fr 1fr`
-      container.appendChild(this.mainPanel)
-      container.appendChild(this.subPanel)
-    }
-    else {
-      container.style.gridTemplateRows = `1fr ${this.mainPanelWidth}fr`
       container.appendChild(this.subPanel)
       container.appendChild(this.mainPanel)
     }
@@ -306,28 +285,13 @@ function panel(image, col, row, flip) {
 
 let bandCount = 0
 function makeBand(prefix, rule, images, height) {
-  const wrapper = document.createElement('band');
-  wrapper.style.display = 'flex';
-  wrapper.style.flexDirection = 'column';
-
-  const label = document.createElement('div');
-  label.textContent = `Rule: ${rule}`;
-  label.style.fontSize = '12px';
-  label.style.fontWeight = 'bold';
-  label.style.marginBottom = '4px';
-  label.style.color = '#555';
-  label.style.paddingLeft = '2px';
-
   bandCount++;
   const flip = bandCount % 2 === 0;
-
   const bandClass = new PartitionedBand(prefix, rule, flip, images)
-  const band = bandClass.makeDivHorz()
-  band.style.height = computeBandHeight(images) + 'px';
+  const band = bandClass.makeBand()
+  // band.style.height = `${height}px`
 
-  // wrapper.appendChild(label);
-  wrapper.appendChild(band);
-  return wrapper;
+  return band;
 }
 
 function renderGallery(prefix, images) {
@@ -361,7 +325,6 @@ function renderGallery(prefix, images) {
     const allImages = [main, ...fillers];
     const height = imgHeight//computeBandHeight(allImages, rule, containerWidth);
     const band = makeBand(prefix, rule, allImages, height);
-    band.querySelector('.band').style.height = `${height}px`
     gallery.appendChild(band);
 
     // TODO implement bailout algorithm

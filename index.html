@@ -6,6 +6,9 @@
   <title>Partitioned Container Band Layout</title>
   <script src="common.js"></script>
   <style>
+    * {
+      --gaps: 10px;
+    }
     body {
       font-family: sans-serif;
       margin: 0;
@@ -14,14 +17,17 @@
     .gallery {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: var(--gaps);
       padding: 10px;
-      width: 1200px;
+      width: calc(100vw - 20px);
     }
-    .band {
-      display: grid;
+    band {
+      display: flex;
+      gap: var(--gaps);
       width: 100%;
-      gap: 4px;
+      flex-direction: row;
+
+      height: 600px; /* temporary. should be dynamic */
     }
     .panel {
       background-size: cover;
@@ -32,8 +38,32 @@
       display: grid;
       background-size: cover;
       background-position: center;
-      border-radius: 4px;
-      gap: 4px;
+      border-radius: 8px;
+      gap: var(--gaps);
+    }
+    bandpanel.main {
+      width: 50%;
+      height: 100%;
+    }
+    bandpanel.sub {
+      width: 50%;
+      height: 100%;
+    }
+
+    @media(max-width: 767px) {
+      band {
+        flex-direction: column;
+
+        height: 1200px; /* temporary. should be dynamic */
+      }
+      bandpanel.main {
+        width: 100%;
+        height: 50%;
+      }
+      bandpanel.sub {
+        width: 100%;
+        height: 50%;
+      }
     }
   </style>
 </head>
