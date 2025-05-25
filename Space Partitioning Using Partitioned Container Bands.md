@@ -67,6 +67,15 @@ The double lines indicate the “handle” of the layout adjustment.
 
 - Two-row Tall Aspect Ratio
     
+    Type D (adjustable B-C, C-D)
+    +-------++---+
+    |   A   || B |
+    |       |+===+
+    |       || C |
+    |       |+===+
+    |       || D |
+    +-------++---+
+    
     Type E1 (adjustable B-D, C-E, then BD-CE)
     +---++---++---+
     | A || B || C |

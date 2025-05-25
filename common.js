@@ -50,18 +50,15 @@ function aspectRatio(image) {
   return image.width / image.height;
 }
 
-function selectRule(image, containerWidth, mainImageHeight) {
-  const targetMainWidth = containerWidth * 0.5;
-  const targetAspectRatio = targetMainWidth / image.height;
-  const actualAspectRatio = image.width / image.height; // larger = wider
-  const delta = Math.abs(actualAspectRatio - targetAspectRatio);
+function selectRule(image, containerWidth) {
+  const imageAspectRatio = eval(image.dim) // larger = wider
 
   // wide
-  if (actualAspectRatio > 1.5) return ['A', 'B'].randomPop()
+  if (imageAspectRatio > 1.5) return ['A', 'B'].randomPop()
   // standard
-  else if (0.7 <= actualAspectRatio && actualAspectRatio <= 1.5) return ['C', 'D'].randomPop()
+  else if (0.7 <= imageAspectRatio && imageAspectRatio <= 1.5) return ['C', 'D'].randomPop()
   // narrow
-  else return ['E1', 'E2', 'F', 'G', 'H', 'I'].randomPop()
+  else return ['E1', 'E2', 'F', 'G', 'H', 'I', 'D'].randomPop()
 }
 
 function computeBandHeight(images, rule, containerWidth) {
@@ -76,7 +73,7 @@ function computeBandHeight(images, rule, containerWidth) {
     case 'I': mainCols = 1; mainRows = 2; break;
   }
   const colWidth = containerWidth * (mainCols / 3);
-  const height = colWidth / (mainImage.width / mainImage.height) / mainRows;
+  const height = colWidth / eval(mainImage.dim) / mainRows;
   //return Math.max(100, Math.min(400, height));
   return height;
 }
@@ -303,8 +300,7 @@ function renderGallery(prefix, images) {
 
   while (important.length > 0) {
     const main = important.pop();
-    const imgHeight = 600;//TODO put image dimension on the JSON
-    const rule = selectRule(main, containerWidth, imgHeight);
+    const rule = selectRule(main, containerWidth);
 
     let needed;
     switch (rule) {
@@ -323,7 +319,7 @@ function renderGallery(prefix, images) {
     const fillers = lesser.splice(0, needed);
     if (fillers.length < needed) break;
     const allImages = [main, ...fillers];
-    const height = imgHeight//computeBandHeight(allImages, rule, containerWidth);
+    const height = computeBandHeight(allImages, rule, containerWidth);
     const band = makeBand(prefix, rule, allImages, height);
     gallery.appendChild(band);
 
