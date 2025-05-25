@@ -50,13 +50,13 @@ function aspectRatio(image) {
   return image.width / image.height;
 }
 
-function selectRule(image, containerWidth) {
-  const imageAspectRatio = eval(image.dim) // larger = wider
+function selectRule(image, internalWidth) {
+  const imageAspectRatio = clippedImageDim(image.dim) // larger = wider
 
   // wide
-  if (imageAspectRatio > 1.5) return ['A', 'B'].randomPop()
+  if (imageAspectRatio > 1.4) return ['A', 'B'].randomPop()
   // standard
-  else if (0.7 <= imageAspectRatio && imageAspectRatio <= 1.5) return ['C', 'D'].randomPop()
+  else if (0.77 <= imageAspectRatio && imageAspectRatio <= 1.4) return ['C', 'D'].randomPop()
   // narrow
   else return ['E1', 'E2', 'F', 'G', 'H', 'I', 'D'].randomPop()
 }
@@ -73,7 +73,7 @@ function computeBandHeight(images, rule, containerWidth) {
     case 'I': mainCols = 1; mainRows = 2; break;
   }
   const colWidth = containerWidth * (mainCols / 3);
-  const height = colWidth / eval(mainImage.dim) / mainRows;
+  const height = colWidth / clippedImageDim(mainImage.dim) / mainRows;
   //return Math.max(100, Math.min(400, height));
   return height;
 }
@@ -87,13 +87,16 @@ class PartitionedBand {
   prefix = ''
   mainPanel = document.createElement('bandpanel')
   subPanel = document.createElement('bandpanel')
-  // #images = {}
+  #images = []
   flipped = false
   picturePanels = []
 
   resizeHandles = {}
 
-  mainPanelWidth = 1.0 // main panel is n fr; subPanel is always 1fr
+
+  #mainPanelWidthPerc = 0 // percentage
+  #height = 0 // pixels
+  #isThreeCol = false
 
   #createLeafPanel() {
     let r = document.createElement('bandpanel')
@@ -129,6 +132,7 @@ class PartitionedBand {
         break;
 
       case 'B': case 'C': case 'H':
+        this.isThreeCol = ('H' == rule)
         panelB = this.#createLeafPanel()
         panelC = this.#createLeafPanel()
         this.subPanel.setColRow(1, 2)
@@ -155,6 +159,7 @@ class PartitionedBand {
         break;
 
       case 'E1':
+        this.isThreeCol = true
         panelB = this.#createLeafPanel()
         panelC = this.#createLeafPanel()
         panelD = this.#createLeafPanel()
@@ -176,6 +181,7 @@ class PartitionedBand {
         break;
 
       case 'E2':
+        this.isThreeCol = true
         panelB = this.#createLeafPanel()
         panelC = this.#createLeafPanel()
         panelD = this.#createLeafPanel()
@@ -197,6 +203,7 @@ class PartitionedBand {
         break;
 
       case 'F':
+        this.isThreeCol = true
         panelB = this.#createLeafPanel()
         panelD = this.#createLeafPanel()
         panelE = this.#createLeafPanel()
@@ -213,6 +220,7 @@ class PartitionedBand {
         break;
 
       case 'G':
+        this.isThreeCol = true
         panelB = this.#createLeafPanel()
         panelC = this.#createLeafPanel()
         panelD = this.#createLeafPanel()
@@ -229,6 +237,7 @@ class PartitionedBand {
         break;
 
       case 'I':
+        this.isThreeCol = true
         panelB = this.#createLeafPanel()
         panelC = this.#createLeafPanel()
         this.subPanel.setColRow(2, 1)
@@ -251,8 +260,20 @@ class PartitionedBand {
       let imgURL = `https://cdn.taimuworld.com/${this.prefix}_thumbs/${imgs[i].ord}.webp`
       panel.style.backgroundImage = `url(${imgURL})` // adjust to fit the actual data structure
     })
+
+    this.#images = imgs
   }
-  makeBand() {
+  adjustBandPartitioning(internalWidth) {
+    let mainImageRatio = clippedImageDim(this.#images[0].dim)
+    let targetWidth = (this.#isThreeCol) ?
+        (internalWidth * 0.7 * mainImageRatio) :
+        (internalWidth * 0.5 * mainImageRatio)
+
+    this.#height = Math.round(targetWidth / mainImageRatio)|0
+    let widthPx = this.#height * mainImageRatio
+    this.#mainPanelWidthPerc = widthPx / internalWidth * 100
+  }
+  makeHTMLelement() {
     const container = document.createElement('band');
     if (!this.flipped) {
       container.appendChild(this.mainPanel)
@@ -262,7 +283,9 @@ class PartitionedBand {
       container.appendChild(this.subPanel)
       container.appendChild(this.mainPanel)
     }
-
+    container.style.height = `${this.#height}px`
+    this.mainPanel.style.width = `${this.#mainPanelWidthPerc}%`
+    this.subPanel.style.width = `${100 - this.#mainPanelWidthPerc}%`
     return container
   }
 }
@@ -281,26 +304,53 @@ function panel(image, col, row, flip) {
 }
 
 let bandCount = 0
-function makeBand(prefix, rule, images, height) {
+function makeBand(prefix, rule, images, height, internalWidth) {
   bandCount++;
   const flip = bandCount % 2 === 0;
   const bandClass = new PartitionedBand(prefix, rule, flip, images)
-  const band = bandClass.makeBand()
-  // band.style.height = `${height}px`
-
+  bandClass.adjustBandPartitioning(internalWidth)
+  const band = bandClass.makeHTMLelement()
   return band;
+}
+
+function clipfun(x0) {
+  const clip_p = 0.444
+  const clip_p1 = Math.sqrt(1.0 - 2.0 * clip_p)
+  const clip_lim = 1.0 / (1.0 + clip_p1)
+
+  let x = x0 * (1.0 + clip_p1) / 2.0
+  let t = 0.5 * clip_p1
+
+  if (Math.abs(x0) >= clip_lim) return 0.5 * Math.sign(x0)
+
+  let y0 = (x < -t) ?
+    ((x*x + x + 0.25) / clip_p - 0.5) :
+  (x > t) ?
+    (-(x*x - x + 0.25) / clip_p + 0.5) :
+
+    (x * 2.0 * clip_lim)
+
+  return y0 // returns -0.5 .. 0.5
+}
+
+function clippedImageDim(dimstr) {
+  let rawDim = eval(dimstr)
+  let workDim = (rawDim < 1.0) ? (1/rawDim) : rawDim
+  let clippedDim = clipfun(workDim / 4)
+
+  return (rawDim < 1.0) ? (0.25/clippedDim) : (4*clippedDim)
 }
 
 function renderGallery(prefix, images) {
   const gallery = document.getElementById('gallery');
-  const containerWidth = 1200;//gallery.clientWidth;
+  const internalWidth = 900;//gallery.clientWidth;
   const shuffled = shuffle([...images]);
   const important = shuffled.filter(img => (img.epic|0) >= 10);
   const lesser = shuffled.filter(img => (img.epic|0) < 10);
 
   while (important.length > 0) {
     const main = important.pop();
-    const rule = selectRule(main, containerWidth);
+    const rule = selectRule(main, internalWidth);
 
     let needed;
     switch (rule) {
@@ -319,8 +369,9 @@ function renderGallery(prefix, images) {
     const fillers = lesser.splice(0, needed);
     if (fillers.length < needed) break;
     const allImages = [main, ...fillers];
-    const height = computeBandHeight(allImages, rule, containerWidth);
-    const band = makeBand(prefix, rule, allImages, height);
+    const adjustedHeight = (internalWidth) / clippedImageDim(main.dim)//computeBandHeight(allImages, rule, internalWidth);
+    const band = makeBand(prefix, rule, allImages, adjustedHeight, internalWidth);
+
     gallery.appendChild(band);
 
     // TODO implement bailout algorithm
