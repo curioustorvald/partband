@@ -96,6 +96,193 @@ function computeBandHeight(images, rule, containerWidth) {
   return height;
 }
 
+Object.prototype.setColRow = function(cols, rows) {
+  this.style.gridColumn = cols
+  this.style.gridRow = rows
+}
+
+class PartitionedBand {
+  #mainPanel = document.createElement('bandpanel')
+  #subPanel = document.createElement('bandpanel')
+  #images = {}
+  #flipped = false
+  #picturePanels = []
+
+  resizeHandles = {}
+
+  mainPanelWidth = 1.0 // main panel is n fr; subPanel is always 1fr
+
+  #createResizeHandle(panelA, panelB) {
+    // TODO
+  }
+
+  constructor(rule, flip) {
+    mainPanel.setColRow(1, 1)
+    subPanel.setColRow(1, 1)
+    picturePanels.push(mainPanel) // index 0
+    resizeHandles['A-B'] = createResizeHandle(mainPanel, subPanel)
+
+    flipped = flip
+    switch(rule) {
+      case 'A':
+        picturePanels.push(subPanel) // index 1
+        break;
+
+      case 'B': case 'C': case 'H':
+        let panelB = document.createElement('bandpanel')
+        let panelC = document.createElement('bandpanel')
+        subPanel.setColRow(1, 2)
+        subPanel.appendChild(panelB)
+        subPanel.appendChild(panelC)
+        picturePanels.push(panelB)
+        picturePanels.push(panelC)
+        resizeHandles['B-C'] = createResizeHandle(panelB, panelC)
+        break;
+
+      case 'D':
+        let panelB = document.createElement('bandpanel')
+        let panelC = document.createElement('bandpanel')
+        let panelD = document.createElement('bandpanel')
+        subPanel.setColRow(1, 3)
+        subPanel.appendChild(panelB)
+        subPanel.appendChild(panelC)
+        subPanel.appendChild(panelD)
+        picturePanels.push(panelB)
+        picturePanels.push(panelC)
+        picturePanels.push(panelD)
+        resizeHandles['B-C'] = createResizeHandle(panelB, panelC)
+        resizeHandles['C-D'] = createResizeHandle(panelC, panelD)
+        break;
+
+      case 'E1':
+        let panelB = document.createElement('bandpanel')
+        let panelC = document.createElement('bandpanel')
+        let panelD = document.createElement('bandpanel')
+        let panelE = document.createElement('bandpanel')
+        let panelBD = document.createElement('bandpanel')
+        let panelCE = document.createElement('bandpanel')
+        subPanel.setColRow(2, 1)
+        panelBD.appendChild(panelB);panelBD.appendChild(panelD)
+        panelCE.appendChild(panelC);panelCE.appendChild(panelE)
+        subPanel.appendChild(panelBD)
+        subPanel.appendChild(panelCE)
+        picturePanels.push(panelB)
+        picturePanels.push(panelC)
+        picturePanels.push(panelD)
+        picturePanels.push(panelE)
+        resizeHandles['B-D'] = createResizeHandle(panelB, panelD)
+        resizeHandles['C-E'] = createResizeHandle(panelC, panelE)
+        resizeHandles['BD-CE'] = createResizeHandle(panelBD, panelCE)
+        break;
+
+      case 'E2':
+        let panelB = document.createElement('bandpanel')
+        let panelC = document.createElement('bandpanel')
+        let panelD = document.createElement('bandpanel')
+        let panelE = document.createElement('bandpanel')
+        let panelBC = document.createElement('bandpanel')
+        let panelDE = document.createElement('bandpanel')
+        subPanel.setColRow(1, 2)
+        panelBC.appendChild(panelB);panelBC.appendChild(panelC)
+        panelDE.appendChild(panelD);panelDE.appendChild(panelE)
+        subPanel.appendChild(panelBC)
+        subPanel.appendChild(panelDE)
+        picturePanels.push(panelB)
+        picturePanels.push(panelC)
+        picturePanels.push(panelD)
+        picturePanels.push(panelE)
+        resizeHandles['B-C'] = createResizeHandle(panelB, panelC)
+        resizeHandles['D-E'] = createResizeHandle(panelD, panelE)
+        resizeHandles['BC-DE'] = createResizeHandle(panelBC, panelDE)
+        break;
+
+      case 'F':
+        let panelB = document.createElement('bandpanel')
+        let panelD = document.createElement('bandpanel')
+        let panelE = document.createElement('bandpanel')
+        let panelDE = document.createElement('bandpanel')
+        subPanel.setColRow(1, 2)
+        panelDE.appendChild(panelD);panelDE.appendChild(panelE)
+        subPanel.appendChild(panelB)
+        subPanel.appendChild(panelDE)
+        picturePanels.push(panelB)
+        picturePanels.push(panelD)
+        picturePanels.push(panelE)
+        resizeHandles['D-E'] = createResizeHandle(panelD, panelE)
+        resizeHandles['B-DE'] = createResizeHandle(panelB, panelDE)
+        break;
+
+      case 'G':
+        let panelB = document.createElement('bandpanel')
+        let panelC = document.createElement('bandpanel')
+        let panelD = document.createElement('bandpanel')
+        let panelBD = document.createElement('bandpanel')
+        subPanel.setColRow(2, 1)
+        panelBD.appendChild(panelB);panelBD.appendChild(panelD)
+        subPanel.appendChild(panelBD)
+        subPanel.appendChild(panelC)
+        picturePanels.push(panelB)
+        picturePanels.push(panelC)
+        picturePanels.push(panelD)
+        resizeHandles['B-D'] = createResizeHandle(panelB, panelD)
+        resizeHandles['BD-C'] = createResizeHandle(panelBD, panelC)
+        break;
+
+      case 'I':
+        let panelB = document.createElement('bandpanel')
+        let panelC = document.createElement('bandpanel')
+        subPanel.setColRow(2, 1)
+        subPanel.appendChild(panelB)
+        subPanel.appendChild(panelC)
+        picturePanels.push(panelB)
+        picturePanels.push(panelC)
+        resizeHandles['B-C'] = createResizeHandle(panelB, panelC)
+        break;
+    }
+  }
+  putImage(panel, img) {
+    images[panel] = img
+  }
+  renderElemHorz() {
+    const container = document.createElement('div');
+    container.className = 'band'
+    container.setColRow(2, 1) // always divide by main and sub
+    if (!flipped) {
+      container.style.gridTemplateColumns = `${mainPanelWidth}fr 1fr`
+      container.appendChild(mainPanel)
+      container.appendChild(subPanel)
+    }
+    else {
+      container.style.gridTemplateColumns = `1fr ${mainPanelWidth}fr`
+      container.appendChild(subPanel)
+      container.appendChild(mainPanel)
+    }
+
+    return container
+  }
+  renderElemVert() {
+    const container = document.createElement('div');
+    container.className = 'band'
+    container.setColRow(1, 2) // always divide by main and sub
+    if (!flipped) {
+      container.style.gridTemplateRows = `${mainPanelWidth}fr 1fr`
+      container.appendChild(mainPanel)
+      container.appendChild(subPanel)
+    }
+    else {
+      container.style.gridTemplateRows = `1fr ${mainPanelWidth}fr`
+      container.appendChild(subPanel)
+      container.appendChild(mainPanel)
+    }
+
+    return container
+  }
+}
+
+function constructPartition(label) {
+
+}
+
 function panel(image, col, row, flip) {
   const div = document.createElement('div');
   div.className = 'panel';

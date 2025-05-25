@@ -99,12 +99,12 @@ The double lines indicate the “handle” of the layout adjustment.
     |   || D ||   |
     +---++---++---+
     
-    Type H (adjustable B-D)
+    Type H (adjustable B-C)
     +---++-------+
     | A || B     |
     |   ||       |
     |   |+=======+
-    |   || D     |
+    |   || C     |
     +---++-------+
 
     Type I (adjustable B-C)
