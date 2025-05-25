@@ -97,182 +97,204 @@ function computeBandHeight(images, rule, containerWidth) {
 }
 
 Object.prototype.setColRow = function(cols, rows) {
-  this.style.gridColumn = cols
-  this.style.gridRow = rows
+  this.style.gridTemplateColumns = '1fr '.repeat(cols).trim()
+  this.style.gridTemplateRows = '1fr '.repeat(rows).trim()
 }
 
 class PartitionedBand {
-  #mainPanel = document.createElement('bandpanel')
-  #subPanel = document.createElement('bandpanel')
-  #images = {}
-  #flipped = false
-  #picturePanels = []
+  mainPanel = document.createElement('bandpanel')
+  subPanel = document.createElement('bandpanel')
+  // #images = {}
+  flipped = false
+  picturePanels = []
 
   resizeHandles = {}
 
   mainPanelWidth = 1.0 // main panel is n fr; subPanel is always 1fr
 
+  #createLeafPanel() {
+    let r = document.createElement('bandpanel')
+    r.className = 'leaf'
+    return r
+  }
+
+  #createIntermediatePanel() {
+    let r = document.createElement('bandpanel')
+    return r
+  }
+
   #createResizeHandle(panelA, panelB) {
     // TODO
   }
 
-  constructor(rule, flip) {
-    mainPanel.setColRow(1, 1)
-    subPanel.setColRow(1, 1)
-    picturePanels.push(mainPanel) // index 0
-    resizeHandles['A-B'] = createResizeHandle(mainPanel, subPanel)
+  constructor(rule, flip, images) {
+    this.mainPanel.setColRow(1, 1)
+    this.mainPanel.className = 'main leaf'
+    this.subPanel.setColRow(1, 1)
+    this.subPanel.className = 'sub'
+    this.picturePanels.push(this.mainPanel) // index 0
+    this.resizeHandles['A-B'] = this.#createResizeHandle(this.mainPanel, this.subPanel)
+    this.flipped = flip
 
-    flipped = flip
+    let panelB, panelC, panelD, panelE, panelBD, panelCE, panelBC, panelDE;
+
     switch(rule) {
       case 'A':
-        picturePanels.push(subPanel) // index 1
+        this.picturePanels.push(this.subPanel) // index 1
+          this.subPanel.className = 'sub leaf'
         break;
 
       case 'B': case 'C': case 'H':
-        let panelB = document.createElement('bandpanel')
-        let panelC = document.createElement('bandpanel')
-        subPanel.setColRow(1, 2)
-        subPanel.appendChild(panelB)
-        subPanel.appendChild(panelC)
-        picturePanels.push(panelB)
-        picturePanels.push(panelC)
-        resizeHandles['B-C'] = createResizeHandle(panelB, panelC)
+        panelB = this.#createLeafPanel()
+        panelC = this.#createLeafPanel()
+        this.subPanel.setColRow(1, 2)
+        this.subPanel.appendChild(panelB)
+        this.subPanel.appendChild(panelC)
+        this.picturePanels.push(panelB)
+        this.picturePanels.push(panelC)
+        this.resizeHandles['B-C'] = this.#createResizeHandle(panelB, panelC)
         break;
 
       case 'D':
-        let panelB = document.createElement('bandpanel')
-        let panelC = document.createElement('bandpanel')
-        let panelD = document.createElement('bandpanel')
-        subPanel.setColRow(1, 3)
-        subPanel.appendChild(panelB)
-        subPanel.appendChild(panelC)
-        subPanel.appendChild(panelD)
-        picturePanels.push(panelB)
-        picturePanels.push(panelC)
-        picturePanels.push(panelD)
-        resizeHandles['B-C'] = createResizeHandle(panelB, panelC)
-        resizeHandles['C-D'] = createResizeHandle(panelC, panelD)
+        panelB = this.#createLeafPanel()
+        panelC = this.#createLeafPanel()
+        panelD = this.#createLeafPanel()
+        this.subPanel.setColRow(1, 3)
+        this.subPanel.appendChild(panelB)
+        this.subPanel.appendChild(panelC)
+        this.subPanel.appendChild(panelD)
+        this.picturePanels.push(panelB)
+        this.picturePanels.push(panelC)
+        this.picturePanels.push(panelD)
+        this.resizeHandles['B-C'] = this.#createResizeHandle(panelB, panelC)
+        this.resizeHandles['C-D'] = this.#createResizeHandle(panelC, panelD)
         break;
 
       case 'E1':
-        let panelB = document.createElement('bandpanel')
-        let panelC = document.createElement('bandpanel')
-        let panelD = document.createElement('bandpanel')
-        let panelE = document.createElement('bandpanel')
-        let panelBD = document.createElement('bandpanel')
-        let panelCE = document.createElement('bandpanel')
-        subPanel.setColRow(2, 1)
+        panelB = this.#createLeafPanel()
+        panelC = this.#createLeafPanel()
+        panelD = this.#createLeafPanel()
+        panelE = this.#createLeafPanel()
+        panelBD = this.#createIntermediatePanel(); panelBD.setColRow(1, 2)
+        panelCE = this.#createIntermediatePanel(); panelCE.setColRow(1, 2)
+        this.subPanel.setColRow(2, 1)
         panelBD.appendChild(panelB);panelBD.appendChild(panelD)
         panelCE.appendChild(panelC);panelCE.appendChild(panelE)
-        subPanel.appendChild(panelBD)
-        subPanel.appendChild(panelCE)
-        picturePanels.push(panelB)
-        picturePanels.push(panelC)
-        picturePanels.push(panelD)
-        picturePanels.push(panelE)
-        resizeHandles['B-D'] = createResizeHandle(panelB, panelD)
-        resizeHandles['C-E'] = createResizeHandle(panelC, panelE)
-        resizeHandles['BD-CE'] = createResizeHandle(panelBD, panelCE)
+        this.subPanel.appendChild(panelBD)
+        this.subPanel.appendChild(panelCE)
+        this.picturePanels.push(panelB)
+        this.picturePanels.push(panelC)
+        this.picturePanels.push(panelD)
+        this.picturePanels.push(panelE)
+        this.resizeHandles['B-D'] = this.#createResizeHandle(panelB, panelD)
+        this.resizeHandles['C-E'] = this.#createResizeHandle(panelC, panelE)
+        this.resizeHandles['BD-CE'] = this.#createResizeHandle(panelBD, panelCE)
         break;
 
       case 'E2':
-        let panelB = document.createElement('bandpanel')
-        let panelC = document.createElement('bandpanel')
-        let panelD = document.createElement('bandpanel')
-        let panelE = document.createElement('bandpanel')
-        let panelBC = document.createElement('bandpanel')
-        let panelDE = document.createElement('bandpanel')
-        subPanel.setColRow(1, 2)
+        panelB = this.#createLeafPanel()
+        panelC = this.#createLeafPanel()
+        panelD = this.#createLeafPanel()
+        panelE = this.#createLeafPanel()
+        panelBC = this.#createIntermediatePanel(); panelBC.setColRow(2, 1)
+        panelDE = this.#createIntermediatePanel(); panelDE.setColRow(2, 1)
+        this.subPanel.setColRow(1, 2)
         panelBC.appendChild(panelB);panelBC.appendChild(panelC)
         panelDE.appendChild(panelD);panelDE.appendChild(panelE)
-        subPanel.appendChild(panelBC)
-        subPanel.appendChild(panelDE)
-        picturePanels.push(panelB)
-        picturePanels.push(panelC)
-        picturePanels.push(panelD)
-        picturePanels.push(panelE)
-        resizeHandles['B-C'] = createResizeHandle(panelB, panelC)
-        resizeHandles['D-E'] = createResizeHandle(panelD, panelE)
-        resizeHandles['BC-DE'] = createResizeHandle(panelBC, panelDE)
+        this.subPanel.appendChild(panelBC)
+        this.subPanel.appendChild(panelDE)
+        this.picturePanels.push(panelB)
+        this.picturePanels.push(panelC)
+        this.picturePanels.push(panelD)
+        this.picturePanels.push(panelE)
+        this.resizeHandles['B-C'] = this.#createResizeHandle(panelB, panelC)
+        this.resizeHandles['D-E'] = this.#createResizeHandle(panelD, panelE)
+        this.resizeHandles['BC-DE'] = this.#createResizeHandle(panelBC, panelDE)
         break;
 
       case 'F':
-        let panelB = document.createElement('bandpanel')
-        let panelD = document.createElement('bandpanel')
-        let panelE = document.createElement('bandpanel')
-        let panelDE = document.createElement('bandpanel')
-        subPanel.setColRow(1, 2)
+        panelB = this.#createLeafPanel()
+        panelD = this.#createLeafPanel()
+        panelE = this.#createLeafPanel()
+        panelDE = this.#createIntermediatePanel(); panelDE.setColRow(2, 1)
+        this.subPanel.setColRow(1, 2)
         panelDE.appendChild(panelD);panelDE.appendChild(panelE)
-        subPanel.appendChild(panelB)
-        subPanel.appendChild(panelDE)
-        picturePanels.push(panelB)
-        picturePanels.push(panelD)
-        picturePanels.push(panelE)
-        resizeHandles['D-E'] = createResizeHandle(panelD, panelE)
-        resizeHandles['B-DE'] = createResizeHandle(panelB, panelDE)
+        this.subPanel.appendChild(panelB)
+        this.subPanel.appendChild(panelDE)
+        this.picturePanels.push(panelB)
+        this.picturePanels.push(panelD)
+        this.picturePanels.push(panelE)
+        this.resizeHandles['D-E'] = this.#createResizeHandle(panelD, panelE)
+        this.resizeHandles['B-DE'] = this.#createResizeHandle(panelB, panelDE)
         break;
 
       case 'G':
-        let panelB = document.createElement('bandpanel')
-        let panelC = document.createElement('bandpanel')
-        let panelD = document.createElement('bandpanel')
-        let panelBD = document.createElement('bandpanel')
-        subPanel.setColRow(2, 1)
+        panelB = this.#createLeafPanel()
+        panelC = this.#createLeafPanel()
+        panelD = this.#createLeafPanel()
+        panelBD = this.#createIntermediatePanel(); panelBD.setColRow(1, 2)
+        this.subPanel.setColRow(2, 1)
         panelBD.appendChild(panelB);panelBD.appendChild(panelD)
-        subPanel.appendChild(panelBD)
-        subPanel.appendChild(panelC)
-        picturePanels.push(panelB)
-        picturePanels.push(panelC)
-        picturePanels.push(panelD)
-        resizeHandles['B-D'] = createResizeHandle(panelB, panelD)
-        resizeHandles['BD-C'] = createResizeHandle(panelBD, panelC)
+        this.subPanel.appendChild(panelBD)
+        this.subPanel.appendChild(panelC)
+        this.picturePanels.push(panelB)
+        this.picturePanels.push(panelC)
+        this.picturePanels.push(panelD)
+        this.resizeHandles['B-D'] = this.#createResizeHandle(panelB, panelD)
+        this.resizeHandles['BD-C'] = this.#createResizeHandle(panelBD, panelC)
         break;
 
       case 'I':
-        let panelB = document.createElement('bandpanel')
-        let panelC = document.createElement('bandpanel')
-        subPanel.setColRow(2, 1)
-        subPanel.appendChild(panelB)
-        subPanel.appendChild(panelC)
-        picturePanels.push(panelB)
-        picturePanels.push(panelC)
-        resizeHandles['B-C'] = createResizeHandle(panelB, panelC)
+        panelB = this.#createLeafPanel()
+        panelC = this.#createLeafPanel()
+        this.subPanel.setColRow(2, 1)
+        this.subPanel.appendChild(panelB)
+        this.subPanel.appendChild(panelC)
+        this.picturePanels.push(panelB)
+        this.picturePanels.push(panelC)
+        this.resizeHandles['B-C'] = this.#createResizeHandle(panelB, panelC)
         break;
     }
+
+    if (images) {
+      this.putImages(images)
+    }
   }
-  putImage(panel, img) {
-    images[panel] = img
+  putImages(imgs) {
+    this.picturePanels.forEach((panel, i) => {
+      panel.style.backgroundImage = `url(${imgs[i]})`
+    })
   }
-  renderElemHorz() {
+  makeDivHorz() {
     const container = document.createElement('div');
     container.className = 'band'
     container.setColRow(2, 1) // always divide by main and sub
-    if (!flipped) {
-      container.style.gridTemplateColumns = `${mainPanelWidth}fr 1fr`
-      container.appendChild(mainPanel)
-      container.appendChild(subPanel)
+    if (!this.flipped) {
+      container.style.gridTemplateColumns = `${this.mainPanelWidth}fr 1fr`
+      container.appendChild(this.mainPanel)
+      container.appendChild(this.subPanel)
     }
     else {
-      container.style.gridTemplateColumns = `1fr ${mainPanelWidth}fr`
-      container.appendChild(subPanel)
-      container.appendChild(mainPanel)
+      container.style.gridTemplateColumns = `1fr ${this.mainPanelWidth}fr`
+      container.appendChild(this.subPanel)
+      container.appendChild(this.mainPanel)
     }
 
     return container
   }
-  renderElemVert() {
+  makeDivVert() {
     const container = document.createElement('div');
     container.className = 'band'
     container.setColRow(1, 2) // always divide by main and sub
     if (!flipped) {
-      container.style.gridTemplateRows = `${mainPanelWidth}fr 1fr`
-      container.appendChild(mainPanel)
-      container.appendChild(subPanel)
+      container.style.gridTemplateRows = `${this.mainPanelWidth}fr 1fr`
+      container.appendChild(this.mainPanel)
+      container.appendChild(this.subPanel)
     }
     else {
-      container.style.gridTemplateRows = `1fr ${mainPanelWidth}fr`
-      container.appendChild(subPanel)
-      container.appendChild(mainPanel)
+      container.style.gridTemplateRows = `1fr ${this.mainPanelWidth}fr`
+      container.appendChild(this.subPanel)
+      container.appendChild(this.mainPanel)
     }
 
     return container
@@ -294,7 +316,7 @@ function panel(image, col, row, flip) {
 
 let bandCount = 0
 function makeBand(rule, images, height) {
-  const wrapper = document.createElement('div');
+  const wrapper = document.createElement('band');
   wrapper.style.display = 'flex';
   wrapper.style.flexDirection = 'column';
 
@@ -307,98 +329,11 @@ function makeBand(rule, images, height) {
   label.style.paddingLeft = '2px';
 
   bandCount++;
-  const band = document.createElement('div');
-  const flip = false//bandCount % 2 === 0;
-  band.className = 'band';
+  const flip = bandCount % 2 === 0;
+
+  const bandClass = new PartitionedBand(rule, flip, images)
+  const band = bandClass.makeDivHorz()
   band.style.height = computeBandHeight(images) + 'px';
-
-  switch (rule) {
-    case 'A': // Type A
-      band.style.gridTemplateColumns = '1.4fr 1fr';
-      band.style.gridTemplateRows = '1fr';
-      band.appendChild(panel(images[0], 1, '1', flip));
-      band.appendChild(panel(images[1], 2, '1', flip));
-      break;
-
-    case 'B': // Type B (adjustable B-C)
-      band.style.gridTemplateColumns = '1.4fr 1fr';
-      band.style.gridTemplateRows = '1fr 1fr';
-      band.appendChild(panel(images[0], 1, '1 / span 2', flip));
-      band.appendChild(panel(images[1], 2, '1', flip));
-      band.appendChild(panel(images[2], 2, '2', flip));
-      break;
-
-    case 'C': // Type C (adjustable B-C)
-      band.style.gridTemplateColumns = '1.4fr 1fr';
-      band.style.gridTemplateRows = '1fr 1fr 1fr';
-      band.appendChild(panel(images[0], 1, '1 / span 3', flip));
-      band.appendChild(panel(images[1], 2, '1 / span 2', flip));
-      band.appendChild(panel(images[2], 2, '3', flip));
-      break;
-
-    case 'D': // Type D (adjustable B-C, C-D)
-      band.style.gridTemplateColumns = '1.4fr 1fr';
-      band.style.gridTemplateRows = '1fr 1fr 1fr';
-      band.appendChild(panel(images[0], 1, '1 / span 3', flip));
-      band.appendChild(panel(images[1], 2, '1', flip));
-      band.appendChild(panel(images[2], 2, '2', flip));
-      band.appendChild(panel(images[3], 2, '3', flip));
-      break;
-
-    case 'E1': // Type E1 (adjustable B-D, C-E)
-      band.style.gridTemplateColumns = '1fr 1fr 1fr';
-      band.style.gridTemplateRows = '1fr 1fr';
-      band.appendChild(panel(images[0], 1, '1 / span 2', flip));
-      band.appendChild(panel(images[1], 2, '1', flip));
-      band.appendChild(panel(images[2], 3, '1', flip));
-      band.appendChild(panel(images[3], 2, '2', flip));
-      band.appendChild(panel(images[4], 3, '2', flip));
-      break;
-
-    case 'E2': // Type E2 (adjustable B-C, D-E)
-      band.style.gridTemplateColumns = '1fr 1fr 1fr';
-      band.style.gridTemplateRows = '1fr 1fr';
-      band.appendChild(panel(images[0], 1, '1 / span 2', flip));
-      band.appendChild(panel(images[1], 2, '1', flip));
-      band.appendChild(panel(images[2], 3, '1', flip));
-      band.appendChild(panel(images[3], 2, '2', flip));
-      band.appendChild(panel(images[4], 3, '2', flip));
-      break;
-
-    case 'F': // Type F (adjustable D-E)
-      band.style.gridTemplateColumns = '1fr 1fr 1fr';
-      band.style.gridTemplateRows = '1fr 1fr';
-      band.appendChild(panel(images[0], 1, '1 / span 2', flip));
-      band.appendChild(panel(images[1], '2 / span 2', '1', flip));
-      band.appendChild(panel(images[2], 2, '2', flip));
-      band.appendChild(panel(images[3], 3, '2', flip));
-      break;
-
-    case 'G': // Type G (adjustable B-D)
-      band.style.gridTemplateColumns = '1fr 1fr 1fr';
-      band.style.gridTemplateRows = '1fr 1fr';
-      band.appendChild(panel(images[0], 1, '1 / span 2', flip));
-      band.appendChild(panel(images[1], 2, '1', flip));
-      band.appendChild(panel(images[2], 3, '1 / span 2', flip));
-      band.appendChild(panel(images[3], 2, '2', flip));
-      break;
-
-    case 'H': // Type H (adjustable B-D)
-      band.style.gridTemplateColumns = '1fr 1fr';
-      band.style.gridTemplateRows = '1fr 1fr';
-      band.appendChild(panel(images[0], 1, '1 / span 2', flip));
-      band.appendChild(panel(images[1], 2, '1', flip));
-      band.appendChild(panel(images[2], 2, '2', flip));
-      break;
-
-    case 'I': // Type I (adjustable B-C)
-      band.style.gridTemplateColumns = '1fr 1fr 1fr';
-      band.style.gridTemplateRows = '1fr 1fr';
-        band.appendChild(panel(images[0], 1, '1', flip));
-        band.appendChild(panel(images[1], 2, '1', flip));
-        band.appendChild(panel(images[2], 3, '1', flip));
-      break;
-  }
 
   wrapper.appendChild(label);
   wrapper.appendChild(band);
@@ -416,7 +351,7 @@ function renderGallery() {
     const main = important.pop();
     const imgHeight = main.height;
     const rule = selectRule(main, containerWidth, imgHeight);
-    console.log(`imgHeight=${imgHeight}`, `rule=${rule}`)
+
     let needed;
     switch (rule) {
       case 'A': needed = 1; break;
@@ -436,7 +371,7 @@ function renderGallery() {
     const allImages = [main, ...fillers];
     const height = imgHeight//computeBandHeight(allImages, rule, containerWidth);
     const band = makeBand(rule, allImages, height);
-    band.querySelector('.band').style.height = `${height}px`;
+    band.querySelector('.band').style.height = `${height}px`
     gallery.appendChild(band);
   }
 }
