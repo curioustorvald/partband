@@ -35,24 +35,6 @@ Array.prototype.randomPop = function() {
   return this.splice(randomIndex, 1)[0];
 };
 
-///////////////////////////////////////////////////////////
-
-
-const images = [
-  { src: 'https://picsum.photos/id/1015/600/400', width: 600, height: 400, importance: 9 },
-  { src: 'https://picsum.photos/id/1016/400/600', width: 400, height: 600, importance: 6 },
-  { src: 'https://picsum.photos/id/1018/300/200', width: 300, height: 200, importance: 4 },
-  { src: 'https://picsum.photos/id/1020/300/200', width: 300, height: 200, importance: 3 },
-  { src: 'https://picsum.photos/id/1021/300/200', width: 300, height: 200, importance: 2 },
-  { src: 'https://picsum.photos/id/1022/200/300', width: 200, height: 300, importance: 2 },
-  { src: 'https://picsum.photos/id/1024/600/400', width: 600, height: 400, importance: 8 },
-  { src: 'https://picsum.photos/id/1025/450/300', width: 450, height: 300, importance: 5 },
-  { src: 'https://picsum.photos/id/1027/400/400', width: 400, height: 400, importance: 4 },
-  { src: 'https://picsum.photos/id/1028/300/450', width: 300, height: 450, importance: 3 },
-  { src: 'https://picsum.photos/id/1029/350/250', width: 350, height: 250, importance: 2 },
-  { src: 'https://picsum.photos/id/1030/250/350', width: 250, height: 350, importance: 1 }
-];
-
 function shuffle(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -60,6 +42,9 @@ function shuffle(array) {
   }
   return array;
 }
+
+///////////////////////////////////////////////////////////
+
 
 function aspectRatio(image) {
   return image.width / image.height;
@@ -102,6 +87,7 @@ Object.prototype.setColRow = function(cols, rows) {
 }
 
 class PartitionedBand {
+  prefix = ''
   mainPanel = document.createElement('bandpanel')
   subPanel = document.createElement('bandpanel')
   // #images = {}
@@ -127,7 +113,8 @@ class PartitionedBand {
     // TODO
   }
 
-  constructor(rule, flip, images) {
+  constructor(prefix, rule, flip, images) {
+    this.prefix = prefix
     this.mainPanel.setColRow(1, 1)
     this.mainPanel.className = 'main leaf'
     this.subPanel.setColRow(1, 1)
@@ -261,8 +248,11 @@ class PartitionedBand {
     }
   }
   putImages(imgs) {
+    //console.log("putImages", imgs)
     this.picturePanels.forEach((panel, i) => {
-      panel.style.backgroundImage = `url(${imgs[i]})`
+      //panel.style.backgroundImage = `url(${imgs[i].src})` // adjust to fit the actual data structure
+      let imgURL = `https://cdn.taimuworld.com/${this.prefix}_thumbs/${imgs[i].ord}.webp`
+      panel.style.backgroundImage = `url(${imgURL})` // adjust to fit the actual data structure
     })
   }
   makeDivHorz() {
@@ -286,7 +276,7 @@ class PartitionedBand {
     const container = document.createElement('div');
     container.className = 'band'
     container.setColRow(1, 2) // always divide by main and sub
-    if (!flipped) {
+    if (!this.flipped) {
       container.style.gridTemplateRows = `${this.mainPanelWidth}fr 1fr`
       container.appendChild(this.mainPanel)
       container.appendChild(this.subPanel)
@@ -315,7 +305,7 @@ function panel(image, col, row, flip) {
 }
 
 let bandCount = 0
-function makeBand(rule, images, height) {
+function makeBand(prefix, rule, images, height) {
   const wrapper = document.createElement('band');
   wrapper.style.display = 'flex';
   wrapper.style.flexDirection = 'column';
@@ -331,25 +321,25 @@ function makeBand(rule, images, height) {
   bandCount++;
   const flip = bandCount % 2 === 0;
 
-  const bandClass = new PartitionedBand(rule, flip, images)
+  const bandClass = new PartitionedBand(prefix, rule, flip, images)
   const band = bandClass.makeDivHorz()
   band.style.height = computeBandHeight(images) + 'px';
 
-  wrapper.appendChild(label);
+  // wrapper.appendChild(label);
   wrapper.appendChild(band);
   return wrapper;
 }
 
-function renderGallery() {
+function renderGallery(prefix, images) {
   const gallery = document.getElementById('gallery');
-  const containerWidth = 900;//gallery.clientWidth;
+  const containerWidth = 1200;//gallery.clientWidth;
   const shuffled = shuffle([...images]);
-  const important = shuffled.filter(img => img.importance >= 5);
-  const lesser = shuffled.filter(img => img.importance < 5);
+  const important = shuffled.filter(img => (img.epic|0) >= 10);
+  const lesser = shuffled.filter(img => (img.epic|0) < 10);
 
   while (important.length > 0) {
     const main = important.pop();
-    const imgHeight = main.height;
+    const imgHeight = 600;//TODO put image dimension on the JSON
     const rule = selectRule(main, containerWidth, imgHeight);
 
     let needed;
@@ -370,13 +360,18 @@ function renderGallery() {
     if (fillers.length < needed) break;
     const allImages = [main, ...fillers];
     const height = imgHeight//computeBandHeight(allImages, rule, containerWidth);
-    const band = makeBand(rule, allImages, height);
+    const band = makeBand(prefix, rule, allImages, height);
     band.querySelector('.band').style.height = `${height}px`
     gallery.appendChild(band);
+
+    // TODO implement bailout algorithm
   }
 }
 
 
-function pack() {
-  renderGallery();
+function pack(prefix) {
+  loadJson(`${prefix}.json`, str => {
+    let imgObjs = JSON.parse(str).arts.filter(it => it.ord % 10 == 0 || it.ord < 10)
+    renderGallery(prefix, imgObjs)
+  })
 }
