@@ -315,13 +315,11 @@ function panel(image, col, row, flip) {
 }
 
 let bandCount = 0
-function makeBand(prefix, rule, images, height, internalWidth) {
+function makeBandClass(prefix, rule, height) {
   bandCount++;
   const flip = bandCount % 2 === 0;
-  const bandClass = new PartitionedBand(prefix, rule, flip, images)
-  bandClass.adjustBandPartitioning(internalWidth)
-  const band = bandClass.makeHTMLelement()
-  return band;
+  const bandClass = new PartitionedBand(prefix, rule, flip)
+  return bandClass
 }
 
 function clipfun(x0) {
@@ -357,15 +355,20 @@ function renderGallery(prefix, images) {
   const shuffled = shuffle([...images]);
   const important = shuffled.filter(img => (img.epic|0) >= 10);
   const lesser = shuffled.filter(img => (img.epic|0) < 10);
-
   let fillers = []
-  let rule = ''
 
   while (important.length > 0) {
+    let rule = ''
     const main = important.pop();
     const ruleSet = shuffle(selectRuleSet(main, internalWidth));
+    // pre-calculated band dimensions
+    let adjustedHeight = internalWidth / main.ratio
 
-    while (ruleSet.length > 0) {
+    let band = undefined;
+    let ruleFound = false;
+
+    // Keep trying rules until we find one that works or run out of rules
+    while (!ruleFound && ruleSet.length > 0) {
       rule = ruleSet.pop()
       let needed;
       switch (rule) {
@@ -381,33 +384,44 @@ function renderGallery(prefix, images) {
         case 'I': needed = 2; break;
         default: needed = 2;
       }
-      // TODO choose filler image using the expected aspect ratio of the filler cells
-      fillers = lesser.splice(0, needed);
 
-      // break the loop if enough images were collected
-      if (fillers.length >= needed) break;
+      band = makeBandClass(prefix, rule, adjustedHeight)
+
+      // choose filler images now
+      // TODO consider aspect ratio of the remaining panels and pick appropriate images
+      fillers = lesser.splice(0, needed)
+
+      if (fillers.length >= needed) {
+        // We have enough filler images, we can use this rule
+        const allImages = [main, ...fillers]
+        // adjust again if needed
+        //const = computeBandHeight(allImages, rule, internalWidth);
+        band.putImages(allImages)
+        band.adjustBandPartitioning(internalWidth)
+        ruleFound = true;
+      }
+      else {
+        // Not enough filler images, put them back and try next rule
+        lesser.unshift(...fillers);
+      }
     }
-    if (ruleSet.length == 0) {
+
+    // If no rule worked with available filler images
+    if (!ruleFound) {
       console.log("No viable layout found", main, lesser)
       // if no lesser images are available, use Rule A and put just the main image
       if (lesser.length == 0) {
         rule = 'A'
-
-        const adjustedHeight = internalWidth / main.ratio
-        const band = makeBand(prefix, rule, [main], adjustedHeight, internalWidth);
-        gallery.appendChild(band);
-
-        continue
+        band = makeBandClass(prefix, rule, adjustedHeight)
+        band.putImages([main])
+        band.adjustBandPartitioning(internalWidth)
+      }
+      else {
+        throw Error()
       }
     }
 
-    const allImages = [main, ...fillers];
-    const adjustedHeight = (internalWidth) / main.ratio //computeBandHeight(allImages, rule, internalWidth);
-    const band = makeBand(prefix, rule, allImages, adjustedHeight, internalWidth);
-
-    gallery.appendChild(band);
-
-    // TODO implement bailout algorithm
+    gallery.appendChild(band.makeHTMLelement())
   }
 }
 
