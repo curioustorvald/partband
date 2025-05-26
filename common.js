@@ -445,7 +445,7 @@ function renderGallery(prefix, images) {
     let rule = ''
     const main = important.pop();
     //const ruleSet = shuffle(selectRuleSet(main, internalWidth));
-    const ruleSet = ['F2']//shuffle(['A', 'B', 'D', 'E1', 'E2', 'F1', 'F2', 'G', 'I']);
+    const ruleSet = shuffle(['A', 'B', 'D', 'E1', 'E2', 'F1', 'F2', 'G', 'I']);
     // pre-calculated band dimensions
     let adjustedHeight = internalWidth / main.ratio
 
@@ -486,8 +486,18 @@ function renderGallery(prefix, images) {
         let panelRatio = panelW / panelH // same format as .json
 
         // pick images from `lesser` that closely matches the ratio
-        let chosen = lesser.filter(it => (2/3) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (3/2)).randomPick()
+        let chosen = lesser.filter(it => (4/5) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (5/4)).randomPick()
 
+        // relax the error margin
+        if (!chosen) {
+          chosen = lesser.filter(it => (3/4) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (4/3)).randomPick()
+        }
+        // relax the error margin
+        if (!chosen) {
+          chosen = lesser.filter(it => (2/3) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (3/2)).randomPick()
+        }
+
+        // if 66% to 150% is not enough, bail out
         if (!chosen) {
           break
         }
