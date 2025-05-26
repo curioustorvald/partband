@@ -93,13 +93,20 @@ The double lines indicate the “handle” of the layout adjustment.
     |   ||     ||   |
     +---++-----++---+
     
-    Type F (adjustable D-E, then B-DE)
+    Type F1 (adjustable C-D, then B-CD)
     +---++--------+
     | A || B      |
     |   |+========+
-    |   || D || E |
+    |   || C || D |
     |   ||   ||   |
     +---++---++---+
+    
+    Type F2 (adjustable B-C, then BC-D)
+    +---++--------+
+    | A || B || C |
+    |   |+========+
+    |   || D      |
+    +---++--------+
     
     Type G (adjustable B-D, then BD-C)
     +---++---++---+
