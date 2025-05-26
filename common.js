@@ -35,6 +35,18 @@ Array.prototype.randomPop = function() {
   return this.splice(randomIndex, 1)[0];
 };
 
+Array.prototype.randomPick = function() {
+  // Return undefined if array is empty
+  if (this.length === 0) {
+      return undefined;
+  }
+
+  // Generate random index
+  const randomIndex = Math.floor(Math.random() * this.length);
+
+  return this[randomIndex]
+};
+
 function shuffle(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -62,7 +74,7 @@ function selectRuleSet(image, internalWidth) {
   // standard
   else if (0.77 <= imageAspectRatio && imageAspectRatio <= 1.4) return ['C', 'D']
   // narrow
-  else return ['E1', 'E2', 'F', 'G', 'H', 'I', 'D']
+  else return ['E1', 'E2', 'F1', 'F2', 'G', 'H', 'I', 'D']
 }
 
 function computeBandHeight(images, rule, containerWidth) {
@@ -72,7 +84,7 @@ function computeBandHeight(images, rule, containerWidth) {
     case 'A': case 'B': mainCols = 2; mainRows = 2; break;
     case 'C': case 'D': mainCols = 2; mainRows = 3; break;
     case 'E1': case 'E2': mainCols = 1; mainRows = 2; break;
-    case 'F': case 'H': mainCols = 1; mainRows = 2; break;
+    case 'F1': case 'F2': case 'H': mainCols = 1; mainRows = 2; break;
     case 'G': mainCols = 1; mainRows = 2; break;
     case 'I': mainCols = 1; mainRows = 2; break;
   }
@@ -97,10 +109,14 @@ class PartitionedBand {
 
   resizeHandles = {}
 
+  subPanelWidthPerc = {} // alphabet to number. Remains empty until adjustBandPartitioning is called. 0-1
+  subPanelHeightPerc = {} // alphabet to number. Remains empty until adjustBandPartitioning is called. 0-1
 
-  #mainPanelWidthPerc = 0 // percentage
-  #height = 0 // pixels
+  #mainPanelWidthPerc = 0 // percentage. 0-100
+  height = 0 // pixels
   #isThreeCol = false
+
+  rule = ''
 
   #createLeafPanel() {
     let r = document.createElement('bandpanel')
@@ -117,6 +133,8 @@ class PartitionedBand {
     // TODO
   }
 
+
+
   constructor(prefix, rule, flip, images) {
     this.prefix = prefix
     this.mainPanel.setColRow(1, 1)
@@ -126,8 +144,9 @@ class PartitionedBand {
     this.picturePanels.push(this.mainPanel) // index 0
     this.resizeHandles['A-B'] = this.#createResizeHandle(this.mainPanel, this.subPanel)
     this.flipped = flip
+    this.rule = rule
 
-    let panelB, panelC, panelD, panelE, panelBD, panelCE, panelBC, panelDE;
+    let panelB, panelC, panelD, panelE, panelBD, panelCD, panelCE, panelBC, panelDE;
 
     switch(rule) {
       case 'A':
@@ -206,21 +225,38 @@ class PartitionedBand {
         this.resizeHandles['BC-DE'] = this.#createResizeHandle(panelBC, panelDE)
         break;
 
-      case 'F':
+      case 'F1':
         this.isThreeCol = true
         panelB = this.#createLeafPanel()
+        panelC = this.#createLeafPanel()
         panelD = this.#createLeafPanel()
-        panelE = this.#createLeafPanel()
-        panelDE = this.#createIntermediatePanel(); panelDE.setColRow(2, 1)
+        panelCD = this.#createIntermediatePanel(); panelCD.setColRow(2, 1)
         this.subPanel.setColRow(1, 2)
-        panelDE.appendChild(panelD);panelDE.appendChild(panelE)
+        panelCD.appendChild(panelC);panelCD.appendChild(panelD)
         this.subPanel.appendChild(panelB)
-        this.subPanel.appendChild(panelDE)
+        this.subPanel.appendChild(panelCD)
         this.picturePanels.push(panelB)
+        this.picturePanels.push(panelC)
         this.picturePanels.push(panelD)
-        this.picturePanels.push(panelE)
-        this.resizeHandles['D-E'] = this.#createResizeHandle(panelD, panelE)
-        this.resizeHandles['B-DE'] = this.#createResizeHandle(panelB, panelDE)
+        this.resizeHandles['C-D'] = this.#createResizeHandle(panelC, panelD)
+        this.resizeHandles['B-CD'] = this.#createResizeHandle(panelB, panelCD)
+        break;
+
+      case 'F2':
+        this.isThreeCol = true
+        panelB = this.#createLeafPanel()
+        panelC = this.#createLeafPanel()
+        panelD = this.#createLeafPanel()
+        panelCD = this.#createIntermediatePanel(); panelCD.setColRow(2, 1)
+        this.subPanel.setColRow(1, 2)
+        panelCD.appendChild(panelC);panelCD.appendChild(panelD)
+        this.subPanel.appendChild(panelCD)
+        this.subPanel.appendChild(panelB)
+        this.picturePanels.push(panelB)
+        this.picturePanels.push(panelC)
+        this.picturePanels.push(panelD)
+        this.resizeHandles['C-D'] = this.#createResizeHandle(panelC, panelD)
+        this.resizeHandles['B-CD'] = this.#createResizeHandle(panelB, panelCD)
         break;
 
       case 'G':
@@ -253,6 +289,30 @@ class PartitionedBand {
         break;
     }
 
+    // fill in subPanelHeightPerc
+    switch (this.rule) {
+      case 'A': case 'I':
+        this.subPanelHeightPerc.B = 1.0
+        this.subPanelHeightPerc.C = 1.0
+        break;
+      case 'B': case 'C': case 'E1': case 'E2': case 'F1': case 'F2': case 'H':
+        this.subPanelHeightPerc.B = 0.5
+        this.subPanelHeightPerc.C = 0.5
+        this.subPanelHeightPerc.D = 0.5
+        this.subPanelHeightPerc.E = 0.5
+        break;
+      case 'D':
+        this.subPanelHeightPerc.B = 1.0 / 3.0
+        this.subPanelHeightPerc.C = 1.0 / 3.0
+        this.subPanelHeightPerc.D = 1.0 / 3.0
+        break;
+      case 'G':
+        this.subPanelHeightPerc.B = 0.5
+        this.subPanelHeightPerc.C = 1.0
+        this.subPanelHeightPerc.D = 0.5
+        break;
+    }
+
     if (images) {
       this.putImages(images)
     }
@@ -280,9 +340,33 @@ class PartitionedBand {
         (internalWidth * 0.7 * mainImageRatio) :
         (internalWidth * 0.5 * mainImageRatio)
 
-    this.#height = Math.round(this.#heightfun(internalWidth, mainImageRatio))|0
-    let widthPx = this.#height * mainImageRatio
+    this.height = Math.round(this.#heightfun(internalWidth, mainImageRatio))|0
+    let widthPx = this.height * mainImageRatio
     this.#mainPanelWidthPerc = widthPx / internalWidth * 100
+
+    // fill in subPanelWidthPerc
+    switch (this.rule) {
+      case 'A': case 'B': case 'C': case 'D': case 'H':
+        this.subPanelWidthPerc.B = 1.0 - (widthPx / internalWidth)
+        this.subPanelWidthPerc.C = this.subPanelWidthPerc.B
+        this.subPanelWidthPerc.D = this.subPanelWidthPerc.B
+        break;
+      case 'E1': case 'E2': case 'G': case 'I':
+        this.subPanelWidthPerc.B = (1.0 - (widthPx / internalWidth)) / 2
+        this.subPanelWidthPerc.C = this.subPanelWidthPerc.B
+        this.subPanelWidthPerc.D = this.subPanelWidthPerc.B
+        this.subPanelWidthPerc.E = this.subPanelWidthPerc.B
+      case 'F1':
+        this.subPanelWidthPerc.B = 1.0 - (widthPx / internalWidth)
+        this.subPanelWidthPerc.C = this.subPanelWidthPerc.B / 2
+        this.subPanelWidthPerc.D = this.subPanelWidthPerc.B / 2
+        break;
+      case 'F2':
+        this.subPanelWidthPerc.D = 1.0 - (widthPx / internalWidth)
+        this.subPanelWidthPerc.B = this.subPanelWidthPerc.D / 2
+        this.subPanelWidthPerc.C = this.subPanelWidthPerc.D / 2
+        break;
+    }
   }
   makeHTMLelement() {
     const container = document.createElement('band');
@@ -294,7 +378,7 @@ class PartitionedBand {
       container.appendChild(this.subPanel)
       container.appendChild(this.mainPanel)
     }
-    container.style.height = `${this.#height}px`
+    container.style.height = `${this.height}px`
     this.mainPanel.style.width = `${this.#mainPanelWidthPerc}%`
     this.subPanel.style.width = `${100 - this.#mainPanelWidthPerc}%`
     return container
@@ -360,7 +444,8 @@ function renderGallery(prefix, images) {
   while (important.length > 0) {
     let rule = ''
     const main = important.pop();
-    const ruleSet = shuffle(selectRuleSet(main, internalWidth));
+    //const ruleSet = shuffle(selectRuleSet(main, internalWidth));
+    const ruleSet = ['F2']//shuffle(['A', 'B', 'D', 'E1', 'E2', 'F1', 'F2', 'G', 'I']);
     // pre-calculated band dimensions
     let adjustedHeight = internalWidth / main.ratio
 
@@ -378,7 +463,8 @@ function renderGallery(prefix, images) {
         case 'D': needed = 3; break;
         case 'E1': needed = 4; break;
         case 'E2': needed = 4; break;
-        case 'F': needed = 3; break;
+        case 'F1': needed = 3; break;
+        case 'F2': needed = 3; break;
         case 'G': needed = 3; break;
         case 'H': needed = 2; break;
         case 'I': needed = 2; break;
@@ -386,18 +472,35 @@ function renderGallery(prefix, images) {
       }
 
       band = makeBandClass(prefix, rule, adjustedHeight)
+      band.putImages([main]) // put main image only for adjustBandPartitioning
+      band.adjustBandPartitioning(internalWidth) // this calculates band height and sub panel width
 
       // choose filler images now
       // TODO consider aspect ratio of the remaining panels and pick appropriate images
-      fillers = lesser.splice(0, needed)
+      //fillers = lesser.splice(0, needed)
 
-      if (fillers.length >= needed) {
+      for (let i = 0; i < needed; i++) {
+        let panel = "BCDE"[i]
+        let panelW = internalWidth * band.subPanelWidthPerc[panel] // pixels
+        let panelH = band.height * band.subPanelHeightPerc[panel] // pixels
+        let panelRatio = panelW / panelH // same format as .json
+
+        // pick images from `lesser` that closely matches the ratio
+        let chosen = lesser.filter(it => (2/3) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (3/2)).randomPick()
+
+        if (!chosen) {
+          break
+        }
+
+        fillers.push(chosen)
+      }
+
+      if (fillers.length >= needed) { // fillers.length is always same as `needed` if all filler images were found
         // We have enough filler images, we can use this rule
         const allImages = [main, ...fillers]
         // adjust again if needed
         //const = computeBandHeight(allImages, rule, internalWidth);
-        band.putImages(allImages)
-        band.adjustBandPartitioning(internalWidth)
+        band.putImages(allImages) // put all the images now
         ruleFound = true;
       }
       else {
