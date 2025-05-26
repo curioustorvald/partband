@@ -124,15 +124,17 @@ class PartitionedBand {
   subPanelWidthPerc = {} // alphabet to number. Remains empty until adjustBandPartitioning is called. 0-1
   subPanelHeightPerc = {} // alphabet to number. Remains empty until adjustBandPartitioning is called. 0-1
 
-  #mainPanelWidthPerc = 0 // percentage. 0-100
+  mainPanelWidthPerc = 0 // percentage. 0-100
+  mainPanelWidth = 0 // pixels
   height = 0 // pixels
   #isThreeCol = false
 
   rule = ''
 
-  #createLeafPanel() {
+  #createLeafPanel(panel) {
     let r = document.createElement('bandpanel')
     r.className = 'leaf'
+    r.setAttribute('panel', panel)
     return r
   }
 
@@ -151,6 +153,7 @@ class PartitionedBand {
     this.prefix = prefix
     this.mainPanel.setColRow(1, 1)
     this.mainPanel.className = 'main leaf'
+    this.mainPanel.setAttribute('panel', 'A')
     this.subPanel.setColRow(1, 1)
     this.subPanel.className = 'sub'
     this.picturePanels.push(this.mainPanel) // index 0
@@ -163,13 +166,14 @@ class PartitionedBand {
     switch(rule) {
       case 'A':
         this.picturePanels.push(this.subPanel) // index 1
-          this.subPanel.className = 'sub leaf'
+        this.subPanel.className = 'sub leaf'
+        this.subPanel.setAttribute('panel', 'B')
         break;
 
       case 'B': case 'C': case 'H':
         this.isThreeCol = ('H' == rule)
-        panelB = this.#createLeafPanel()
-        panelC = this.#createLeafPanel()
+        panelB = this.#createLeafPanel('B')
+        panelC = this.#createLeafPanel('C')
         this.subPanel.setColRow(1, 2)
         this.subPanel.appendChild(panelB)
         this.subPanel.appendChild(panelC)
@@ -179,9 +183,9 @@ class PartitionedBand {
         break;
 
       case 'D':
-        panelB = this.#createLeafPanel()
-        panelC = this.#createLeafPanel()
-        panelD = this.#createLeafPanel()
+        panelB = this.#createLeafPanel('B')
+        panelC = this.#createLeafPanel('C')
+        panelD = this.#createLeafPanel('D')
         this.subPanel.setColRow(1, 3)
         this.subPanel.appendChild(panelB)
         this.subPanel.appendChild(panelC)
@@ -195,10 +199,10 @@ class PartitionedBand {
 
       case 'E1':
         this.isThreeCol = true
-        panelB = this.#createLeafPanel()
-        panelC = this.#createLeafPanel()
-        panelD = this.#createLeafPanel()
-        panelE = this.#createLeafPanel()
+        panelB = this.#createLeafPanel('B')
+        panelC = this.#createLeafPanel('C')
+        panelD = this.#createLeafPanel('D')
+        panelE = this.#createLeafPanel('E')
         panelBD = this.#createIntermediatePanel(); panelBD.setColRow(1, 2)
         panelCE = this.#createIntermediatePanel(); panelCE.setColRow(1, 2)
         this.subPanel.setColRow(2, 1)
@@ -207,8 +211,8 @@ class PartitionedBand {
         this.subPanel.appendChild(panelBD)
         this.subPanel.appendChild(panelCE)
         this.picturePanels.push(panelB)
-        this.picturePanels.push(panelC)
         this.picturePanels.push(panelD)
+        this.picturePanels.push(panelC)
         this.picturePanels.push(panelE)
         this.resizeHandles['B-D'] = this.#createResizeHandle(panelB, panelD)
         this.resizeHandles['C-E'] = this.#createResizeHandle(panelC, panelE)
@@ -217,10 +221,10 @@ class PartitionedBand {
 
       case 'E2':
         this.isThreeCol = true
-        panelB = this.#createLeafPanel()
-        panelC = this.#createLeafPanel()
-        panelD = this.#createLeafPanel()
-        panelE = this.#createLeafPanel()
+        panelB = this.#createLeafPanel('B')
+        panelC = this.#createLeafPanel('C')
+        panelD = this.#createLeafPanel('D')
+        panelE = this.#createLeafPanel('E')
         panelBC = this.#createIntermediatePanel(); panelBC.setColRow(2, 1)
         panelDE = this.#createIntermediatePanel(); panelDE.setColRow(2, 1)
         this.subPanel.setColRow(1, 2)
@@ -239,9 +243,9 @@ class PartitionedBand {
 
       case 'F1':
         this.isThreeCol = true
-        panelB = this.#createLeafPanel()
-        panelC = this.#createLeafPanel()
-        panelD = this.#createLeafPanel()
+        panelB = this.#createLeafPanel('B')
+        panelC = this.#createLeafPanel('C')
+        panelD = this.#createLeafPanel('D')
         panelCD = this.#createIntermediatePanel(); panelCD.setColRow(2, 1)
         this.subPanel.setColRow(1, 2)
         panelCD.appendChild(panelC);panelCD.appendChild(panelD)
@@ -256,26 +260,26 @@ class PartitionedBand {
 
       case 'F2':
         this.isThreeCol = true
-        panelB = this.#createLeafPanel()
-        panelC = this.#createLeafPanel()
-        panelD = this.#createLeafPanel()
-        panelCD = this.#createIntermediatePanel(); panelCD.setColRow(2, 1)
+        panelB = this.#createLeafPanel('B')
+        panelC = this.#createLeafPanel('C')
+        panelD = this.#createLeafPanel('D')
+        panelBC = this.#createIntermediatePanel(); panelBC.setColRow(2, 1)
         this.subPanel.setColRow(1, 2)
-        panelCD.appendChild(panelC);panelCD.appendChild(panelD)
-        this.subPanel.appendChild(panelCD)
-        this.subPanel.appendChild(panelB)
-        this.picturePanels.push(panelB)
-        this.picturePanels.push(panelC)
+        panelBC.appendChild(panelB);panelBC.appendChild(panelC)
+        this.subPanel.appendChild(panelBC)
+        this.subPanel.appendChild(panelD)
         this.picturePanels.push(panelD)
-        this.resizeHandles['C-D'] = this.#createResizeHandle(panelC, panelD)
-        this.resizeHandles['B-CD'] = this.#createResizeHandle(panelB, panelCD)
+        this.picturePanels.push(panelC)
+        this.picturePanels.push(panelB)
+        this.resizeHandles['B-C'] = this.#createResizeHandle(panelB, panelC)
+        this.resizeHandles['BC-D'] = this.#createResizeHandle(panelBC, panelD)
         break;
 
       case 'G':
         this.isThreeCol = true
-        panelB = this.#createLeafPanel()
-        panelC = this.#createLeafPanel()
-        panelD = this.#createLeafPanel()
+        panelB = this.#createLeafPanel('B')
+        panelC = this.#createLeafPanel('C')
+        panelD = this.#createLeafPanel('D')
         panelBD = this.#createIntermediatePanel(); panelBD.setColRow(1, 2)
         this.subPanel.setColRow(2, 1)
         panelBD.appendChild(panelB);panelBD.appendChild(panelD)
@@ -290,8 +294,8 @@ class PartitionedBand {
 
       case 'I':
         this.isThreeCol = true
-        panelB = this.#createLeafPanel()
-        panelC = this.#createLeafPanel()
+        panelB = this.#createLeafPanel('B')
+        panelC = this.#createLeafPanel('C')
         this.subPanel.setColRow(2, 1)
         this.subPanel.appendChild(panelB)
         this.subPanel.appendChild(panelC)
@@ -357,7 +361,8 @@ class PartitionedBand {
 
     this.height = Math.round(this.#heightfun(internalWidth, mainImageRatio))|0
     let widthPx = this.height * mainImageRatio
-    this.#mainPanelWidthPerc = widthPx / internalWidth * 100
+    this.mainPanelWidth = widthPx
+    this.mainPanelWidthPerc = widthPx / internalWidth * 100
 
     // fill in subPanelWidthPerc
     switch (this.rule) {
@@ -371,6 +376,7 @@ class PartitionedBand {
         this.subPanelWidthPerc.C = this.subPanelWidthPerc.B
         this.subPanelWidthPerc.D = this.subPanelWidthPerc.B
         this.subPanelWidthPerc.E = this.subPanelWidthPerc.B
+        break;
       case 'F1':
         this.subPanelWidthPerc.B = 1.0 - (widthPx / internalWidth)
         this.subPanelWidthPerc.C = this.subPanelWidthPerc.B / 2
@@ -394,8 +400,9 @@ class PartitionedBand {
       container.appendChild(this.mainPanel)
     }
     container.style.height = `${this.height}px`
-    this.mainPanel.style.width = `${this.#mainPanelWidthPerc}%`
-    this.subPanel.style.width = `${100 - this.#mainPanelWidthPerc}%`
+    container.setAttribute('rule', this.rule)
+    this.mainPanel.style.width = `${this.mainPanelWidthPerc}%`
+    this.subPanel.style.width = `${100 - this.mainPanelWidthPerc}%`
     return container
   }
 }
@@ -413,9 +420,8 @@ function panel(image, col, row, flip) {
   return div;
 }
 
-let bandCount = 0
+let bandCount = 1
 function makeBandClass(prefix, rule, height) {
-  bandCount++;
   const flip = bandCount % 2 === 0;
   const bandClass = new PartitionedBand(prefix, rule, flip)
   return bandClass
@@ -470,6 +476,7 @@ function renderGallery(prefix, images) {
     // Keep trying rules until we find one that works or run out of rules
     while (!ruleFound && ruleSet.length > 0) {
       rule = ruleSet.pop()
+      console.log(`Band #${bandCount}, trying rule ${rule}`)
       let needed;
       switch (rule) {
         case 'A': needed = 1; break;
@@ -506,10 +513,17 @@ function renderGallery(prefix, images) {
           chosen = lesser.filter(it => (3/4) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (4/3)).randomPick()
         }
 
-        // relax the error margin
-        if (!chosen) {
-          chosen = lesser.filter(it => (2/3) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (3/2)).randomPick()
+        if (chosen) {
+          console.log(`Layout ${rule}; Panel ${panel}; panelDim=${panelW}x${panelH}; panelRatio=${panelRatio}; imgRatio=${chosen.ratio}; image=${chosen.title}; iw=${internalWidth}`)
         }
+        else {
+          console.log(`Layout ${rule}; Panel ${panel}; panelDim=${panelW}x${panelH}; panelRatio=${panelRatio}; iw=${internalWidth}; no viable image found`)
+        }
+
+        // relax the error margin
+        /*if (!chosen) {
+          chosen = lesser.filter(it => (2/3) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (3/2)).randomPick()
+        }*/
 
         // if 66% to 150% is not enough, bail out
         if (!chosen) {
@@ -551,6 +565,7 @@ function renderGallery(prefix, images) {
 
     band.adjustForEvenFit()
     gallery.appendChild(band.makeHTMLelement())
+    bandCount++
   }
 }
 
