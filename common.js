@@ -341,6 +341,9 @@ class PartitionedBand {
 
     this.#images = imgs
   }
+  adjustForEvenFit() {
+    // move handles AND the height of the band to achieve lowest root-mean-squared errors of aspect ratio
+  }
   #heightfun(internalWidth, imgRatio) {
     const MAX = 0.5 * (4/3) * internalWidth
     const MIN = 0.5 / (4/3) * internalWidth
@@ -451,9 +454,9 @@ function renderGallery(prefix, images) {
   const shuffled = shuffle([...images]);
   const important = shuffled.filter(img => (img.epic|0) >= 10);
   let lesser = shuffled.filter(img => (img.epic|0) < 10);
-  let fillers = []
 
   while (important.length > 0) {
+    let fillers = []
     let rule = ''
     const main = important.pop();
     //const ruleSet = shuffle(selectRuleSet(main, internalWidth));
@@ -488,9 +491,7 @@ function renderGallery(prefix, images) {
       band.adjustBandPartitioning(internalWidth) // this calculates band height and sub panel width
 
       // choose filler images now
-      // TODO consider aspect ratio of the remaining panels and pick appropriate images
-      //fillers = lesser.splice(0, needed)
-
+      // consider aspect ratio of the remaining panels and pick appropriate images
       for (let i = 0; i < needed; i++) {
         let panel = "BCDE"[i]
         let panelW = internalWidth * band.subPanelWidthPerc[panel] // pixels
@@ -523,7 +524,7 @@ function renderGallery(prefix, images) {
         // We have enough filler images, we can use this rule
         const allImages = [main, ...fillers]
         // adjust again if needed
-        //const = computeBandHeight(allImages, rule, internalWidth);
+        //band.height = computeBandHeight(allImages, rule, internalWidth);
         band.putImages(allImages) // put all the images now
         ruleFound = true;
       }
@@ -548,6 +549,7 @@ function renderGallery(prefix, images) {
       }
     }
 
+    band.adjustForEvenFit()
     gallery.appendChild(band.makeHTMLelement())
   }
 }
