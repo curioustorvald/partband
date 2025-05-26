@@ -54,15 +54,15 @@ function aspectRatio(image) {
   return image.width / image.height;
 }
 
-function selectRule(image, internalWidth) {
-  const imageAspectRatio = clippedImageDim(image.dim) // larger = wider
+function selectRuleSet(image, internalWidth) {
+  const imageAspectRatio = image.ratio // larger = wider
 
   // wide
-  if (imageAspectRatio > 1.4) return ['A', 'B'].randomPop()
+  if (imageAspectRatio > 1.4) return ['A', 'B']
   // standard
-  else if (0.77 <= imageAspectRatio && imageAspectRatio <= 1.4) return ['C', 'D'].randomPop()
+  else if (0.77 <= imageAspectRatio && imageAspectRatio <= 1.4) return ['C', 'D']
   // narrow
-  else return ['E1', 'E2', 'F', 'G', 'H', 'I', 'D'].randomPop()
+  else return ['E1', 'E2', 'F', 'G', 'H', 'I', 'D']
 }
 
 function computeBandHeight(images, rule, containerWidth) {
@@ -77,7 +77,7 @@ function computeBandHeight(images, rule, containerWidth) {
     case 'I': mainCols = 1; mainRows = 2; break;
   }
   const colWidth = containerWidth * (mainCols / 3);
-  const height = colWidth / clippedImageDim(mainImage.dim) / mainRows;
+  const height = colWidth / mainImage.ratio / mainRows;
   //return Math.max(100, Math.min(400, height));
   return height;
 }
@@ -260,9 +260,11 @@ class PartitionedBand {
   putImages(imgs) {
     //console.log("putImages", imgs)
     this.picturePanels.forEach((panel, i) => {
-      //panel.style.backgroundImage = `url(${imgs[i].src})` // adjust to fit the actual data structure
-      let imgURL = `https://cdn.taimuworld.com/${this.prefix}_thumbs/${imgs[i].ord}.webp`
-      panel.style.backgroundImage = `url(${imgURL})` // adjust to fit the actual data structure
+      if (imgs[i]) {
+        //panel.style.backgroundImage = `url(${imgs[i].src})` // adjust to fit the actual data structure
+        let imgURL = `https://cdn.taimuworld.com/${this.prefix}_thumbs/${imgs[i].ord}.webp`
+        panel.style.backgroundImage = `url(${imgURL})` // adjust to fit the actual data structure
+      }
     })
 
     this.#images = imgs
@@ -273,7 +275,7 @@ class PartitionedBand {
     return coerceIn(1 / (2*imgRatio) * internalWidth, MIN, MAX)
   }
   adjustBandPartitioning(internalWidth) {
-    let mainImageRatio = clippedImageDim(this.#images[0].dim)
+    let mainImageRatio = this.#images[0].ratio
     let targetWidth = (this.#isThreeCol) ?
         (internalWidth * 0.7 * mainImageRatio) :
         (internalWidth * 0.5 * mainImageRatio)
@@ -342,12 +344,11 @@ function clipfun(x0) {
   return y0 // returns -0.5 .. 0.5
 }
 
-function clippedImageDim(dimstr) {
-  let rawDim = eval(dimstr)
-  let workDim = (rawDim < 1.0) ? (1/rawDim) : rawDim
+function clippedImageDim(rawRatio) {
+  let workDim = (rawRatio < 1.0) ? (1/rawRatio) : rawRatio
   let clippedDim = clipfun(workDim / 4)
 
-  return (rawDim < 1.0) ? (0.25/clippedDim) : (4*clippedDim)
+  return (rawRatio < 1.0) ? (0.25/clippedDim) : (4*clippedDim)
 }
 
 function renderGallery(prefix, images) {
@@ -357,28 +358,51 @@ function renderGallery(prefix, images) {
   const important = shuffled.filter(img => (img.epic|0) >= 10);
   const lesser = shuffled.filter(img => (img.epic|0) < 10);
 
+  let fillers = []
+  let rule = ''
+
   while (important.length > 0) {
     const main = important.pop();
-    const rule = selectRule(main, internalWidth);
+    const ruleSet = shuffle(selectRuleSet(main, internalWidth));
 
-    let needed;
-    switch (rule) {
-      case 'A': needed = 1; break;
-      case 'B': needed = 2; break;
-      case 'C': needed = 2; break;
-      case 'D': needed = 3; break;
-      case 'E1': needed = 4; break;
-      case 'E2': needed = 4; break;
-      case 'F': needed = 3; break;
-      case 'G': needed = 3; break;
-      case 'H': needed = 2; break;
-      case 'I': needed = 2; break;
-      default: needed = 2;
+    while (ruleSet.length > 0) {
+      rule = ruleSet.pop()
+      let needed;
+      switch (rule) {
+        case 'A': needed = 1; break;
+        case 'B': needed = 2; break;
+        case 'C': needed = 2; break;
+        case 'D': needed = 3; break;
+        case 'E1': needed = 4; break;
+        case 'E2': needed = 4; break;
+        case 'F': needed = 3; break;
+        case 'G': needed = 3; break;
+        case 'H': needed = 2; break;
+        case 'I': needed = 2; break;
+        default: needed = 2;
+      }
+      // TODO choose filler image using the expected aspect ratio of the filler cells
+      fillers = lesser.splice(0, needed);
+
+      // break the loop if enough images were collected
+      if (fillers.length >= needed) break;
     }
-    const fillers = lesser.splice(0, needed);
-    if (fillers.length < needed) break;
+    if (ruleSet.length == 0) {
+      console.log("No viable layout found", main, lesser)
+      // if no lesser images are available, use Rule A and put just the main image
+      if (lesser.length == 0) {
+        rule = 'A'
+
+        const adjustedHeight = internalWidth / main.ratio
+        const band = makeBand(prefix, rule, [main], adjustedHeight, internalWidth);
+        gallery.appendChild(band);
+
+        continue
+      }
+    }
+
     const allImages = [main, ...fillers];
-    const adjustedHeight = (internalWidth) / clippedImageDim(main.dim)//computeBandHeight(allImages, rule, internalWidth);
+    const adjustedHeight = (internalWidth) / main.ratio //computeBandHeight(allImages, rule, internalWidth);
     const band = makeBand(prefix, rule, allImages, adjustedHeight, internalWidth);
 
     gallery.appendChild(band);
@@ -387,10 +411,18 @@ function renderGallery(prefix, images) {
   }
 }
 
+function precalculateDim(imgObjs) {
+  Object.keys(imgObjs).forEach(i => {
+    imgObjs[i].ratio0 = eval(imgObjs[i].dim)
+    imgObjs[i].ratio = clippedImageDim(imgObjs[i].ratio0)
+  })
+}
 
 function pack(prefix) {
   loadJson(`${prefix}.json`, str => {
-    let imgObjs = JSON.parse(str).arts.filter(it => it.ord % 10 == 0 || it.ord < 10)
+    let imgObjs0 = JSON.parse(str).arts; precalculateDim(imgObjs0)
+    let imgObjs = imgObjs0.filter(it => it.ord % 10 == 0 || it.ord < 10)
+    precalculateDim(imgObjs)
     renderGallery(prefix, imgObjs)
   })
 }
