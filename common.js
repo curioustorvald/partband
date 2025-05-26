@@ -43,6 +43,10 @@ function shuffle(array) {
   return array;
 }
 
+function coerceIn(x, low, high) {
+  return Math.min(Math.max(x, low), high)
+}
+
 ///////////////////////////////////////////////////////////
 
 
@@ -263,13 +267,18 @@ class PartitionedBand {
 
     this.#images = imgs
   }
+  #heightfun(internalWidth, imgRatio) {
+    const MAX = 0.5 * (4/3) * internalWidth
+    const MIN = 0.5 / (4/3) * internalWidth
+    return coerceIn(1 / (2*imgRatio) * internalWidth, MIN, MAX)
+  }
   adjustBandPartitioning(internalWidth) {
     let mainImageRatio = clippedImageDim(this.#images[0].dim)
     let targetWidth = (this.#isThreeCol) ?
         (internalWidth * 0.7 * mainImageRatio) :
         (internalWidth * 0.5 * mainImageRatio)
 
-    this.#height = Math.round(targetWidth / mainImageRatio)|0
+    this.#height = Math.round(this.#heightfun(internalWidth, mainImageRatio))|0
     let widthPx = this.#height * mainImageRatio
     this.#mainPanelWidthPerc = widthPx / internalWidth * 100
   }
