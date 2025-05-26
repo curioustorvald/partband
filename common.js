@@ -59,6 +59,18 @@ function coerceIn(x, low, high) {
   return Math.min(Math.max(x, low), high)
 }
 
+function removeAll(arr, itemsToRemove) {
+  const removeSet = new Set(itemsToRemove);
+  return arr.filter(item => !removeSet.has(item));
+}
+
+Array.prototype.removeElem = function(elem) {
+  const index = this.indexOf(elem); // finds first occurrence
+  if (index > -1) {
+    this.splice(index, 1); // removes 1 element at index
+  }
+}
+
 ///////////////////////////////////////////////////////////
 
 
@@ -438,7 +450,7 @@ function renderGallery(prefix, images) {
   const internalWidth = 900;//gallery.clientWidth;
   const shuffled = shuffle([...images]);
   const important = shuffled.filter(img => (img.epic|0) >= 10);
-  const lesser = shuffled.filter(img => (img.epic|0) < 10);
+  let lesser = shuffled.filter(img => (img.epic|0) < 10);
   let fillers = []
 
   while (important.length > 0) {
@@ -492,6 +504,7 @@ function renderGallery(prefix, images) {
         if (!chosen) {
           chosen = lesser.filter(it => (3/4) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (4/3)).randomPick()
         }
+
         // relax the error margin
         if (!chosen) {
           chosen = lesser.filter(it => (2/3) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (3/2)).randomPick()
@@ -503,6 +516,7 @@ function renderGallery(prefix, images) {
         }
 
         fillers.push(chosen)
+        lesser.removeElem(chosen)
       }
 
       if (fillers.length >= needed) { // fillers.length is always same as `needed` if all filler images were found
