@@ -112,12 +112,16 @@ Object.prototype.setColRow = function(cols, rows) {
 }
 
 class PartitionedBand {
+  DEBUG = 1
+
+
   prefix = ''
   mainPanel = document.createElement('bandpanel')
   subPanel = document.createElement('bandpanel')
   #images = []
   flipped = false
   picturePanels = []
+  panelLetters = []
 
   resizeHandles = {}
 
@@ -134,7 +138,9 @@ class PartitionedBand {
   #createLeafPanel(panel) {
     let r = document.createElement('bandpanel')
     r.className = 'leaf'
-    r.setAttribute('panel', panel)
+    if (this.DEBUG) {
+      r.setAttribute('panel', panel)
+    }
     return r
   }
 
@@ -147,7 +153,10 @@ class PartitionedBand {
     // TODO
   }
 
-
+  #addPicturePanel(panel, letter) {
+    this.picturePanels.push(panel)
+    this.panelLetters.push(letter)
+  }
 
   constructor(prefix, rule, flip, images) {
     this.prefix = prefix
@@ -157,6 +166,7 @@ class PartitionedBand {
     this.subPanel.setColRow(1, 1)
     this.subPanel.className = 'sub'
     this.picturePanels.push(this.mainPanel) // index 0
+    this.panelLetters.push('A')
     this.resizeHandles['A-B'] = this.#createResizeHandle(this.mainPanel, this.subPanel)
     this.flipped = flip
     this.rule = rule
@@ -165,7 +175,7 @@ class PartitionedBand {
 
     switch(rule) {
       case 'A':
-        this.picturePanels.push(this.subPanel) // index 1
+        this.#addPicturePanel(this.subPanel, 'B')
         this.subPanel.className = 'sub leaf'
         this.subPanel.setAttribute('panel', 'B')
         break;
@@ -177,8 +187,8 @@ class PartitionedBand {
         this.subPanel.setColRow(1, 2)
         this.subPanel.appendChild(panelB)
         this.subPanel.appendChild(panelC)
-        this.picturePanels.push(panelB)
-        this.picturePanels.push(panelC)
+        this.#addPicturePanel(panelB, 'B')
+        this.#addPicturePanel(panelC, 'C')
         this.resizeHandles['B-C'] = this.#createResizeHandle(panelB, panelC)
         break;
 
@@ -190,9 +200,9 @@ class PartitionedBand {
         this.subPanel.appendChild(panelB)
         this.subPanel.appendChild(panelC)
         this.subPanel.appendChild(panelD)
-        this.picturePanels.push(panelB)
-        this.picturePanels.push(panelC)
-        this.picturePanels.push(panelD)
+        this.#addPicturePanel(panelB, 'B')
+        this.#addPicturePanel(panelC, 'C')
+        this.#addPicturePanel(panelD, 'D')
         this.resizeHandles['B-C'] = this.#createResizeHandle(panelB, panelC)
         this.resizeHandles['C-D'] = this.#createResizeHandle(panelC, panelD)
         break;
@@ -210,10 +220,10 @@ class PartitionedBand {
         panelCE.appendChild(panelC);panelCE.appendChild(panelE)
         this.subPanel.appendChild(panelBD)
         this.subPanel.appendChild(panelCE)
-        this.picturePanels.push(panelB)
-        this.picturePanels.push(panelD)
-        this.picturePanels.push(panelC)
-        this.picturePanels.push(panelE)
+        this.#addPicturePanel(panelB, 'B')
+        this.#addPicturePanel(panelD, 'D')
+        this.#addPicturePanel(panelC, 'C')
+        this.#addPicturePanel(panelE, 'E')
         this.resizeHandles['B-D'] = this.#createResizeHandle(panelB, panelD)
         this.resizeHandles['C-E'] = this.#createResizeHandle(panelC, panelE)
         this.resizeHandles['BD-CE'] = this.#createResizeHandle(panelBD, panelCE)
@@ -232,10 +242,10 @@ class PartitionedBand {
         panelDE.appendChild(panelD);panelDE.appendChild(panelE)
         this.subPanel.appendChild(panelBC)
         this.subPanel.appendChild(panelDE)
-        this.picturePanels.push(panelB)
-        this.picturePanels.push(panelC)
-        this.picturePanels.push(panelD)
-        this.picturePanels.push(panelE)
+        this.#addPicturePanel(panelB, 'B')
+        this.#addPicturePanel(panelC, 'C')
+        this.#addPicturePanel(panelD, 'D')
+        this.#addPicturePanel(panelE, 'E')
         this.resizeHandles['B-C'] = this.#createResizeHandle(panelB, panelC)
         this.resizeHandles['D-E'] = this.#createResizeHandle(panelD, panelE)
         this.resizeHandles['BC-DE'] = this.#createResizeHandle(panelBC, panelDE)
@@ -251,9 +261,9 @@ class PartitionedBand {
         panelCD.appendChild(panelC);panelCD.appendChild(panelD)
         this.subPanel.appendChild(panelB)
         this.subPanel.appendChild(panelCD)
-        this.picturePanels.push(panelB)
-        this.picturePanels.push(panelC)
-        this.picturePanels.push(panelD)
+        this.#addPicturePanel(panelB, 'B')
+        this.#addPicturePanel(panelC, 'C')
+        this.#addPicturePanel(panelD, 'D')
         this.resizeHandles['C-D'] = this.#createResizeHandle(panelC, panelD)
         this.resizeHandles['B-CD'] = this.#createResizeHandle(panelB, panelCD)
         break;
@@ -268,9 +278,9 @@ class PartitionedBand {
         panelBC.appendChild(panelB);panelBC.appendChild(panelC)
         this.subPanel.appendChild(panelBC)
         this.subPanel.appendChild(panelD)
-        this.picturePanels.push(panelD)
-        this.picturePanels.push(panelC)
-        this.picturePanels.push(panelB)
+        this.#addPicturePanel(panelD, 'D')
+        this.#addPicturePanel(panelC, 'C')
+        this.#addPicturePanel(panelB, 'B')
         this.resizeHandles['B-C'] = this.#createResizeHandle(panelB, panelC)
         this.resizeHandles['BC-D'] = this.#createResizeHandle(panelBC, panelD)
         break;
@@ -285,9 +295,9 @@ class PartitionedBand {
         panelBD.appendChild(panelB);panelBD.appendChild(panelD)
         this.subPanel.appendChild(panelBD)
         this.subPanel.appendChild(panelC)
-        this.picturePanels.push(panelB)
-        this.picturePanels.push(panelC)
-        this.picturePanels.push(panelD)
+        this.#addPicturePanel(panelB, 'B')
+        this.#addPicturePanel(panelC, 'C')
+        this.#addPicturePanel(panelD, 'D')
         this.resizeHandles['B-D'] = this.#createResizeHandle(panelB, panelD)
         this.resizeHandles['BD-C'] = this.#createResizeHandle(panelBD, panelC)
         break;
@@ -299,8 +309,8 @@ class PartitionedBand {
         this.subPanel.setColRow(2, 1)
         this.subPanel.appendChild(panelB)
         this.subPanel.appendChild(panelC)
-        this.picturePanels.push(panelB)
-        this.picturePanels.push(panelC)
+        this.#addPicturePanel(panelB, 'B')
+        this.#addPicturePanel(panelC, 'C')
         this.resizeHandles['B-C'] = this.#createResizeHandle(panelB, panelC)
         break;
     }
@@ -400,7 +410,9 @@ class PartitionedBand {
       container.appendChild(this.mainPanel)
     }
     container.style.height = `${this.height}px`
-    container.setAttribute('rule', this.rule)
+    if (this.DEBUG) {
+      container.setAttribute('rule', this.rule)
+    }
     this.mainPanel.style.width = `${this.mainPanelWidthPerc}%`
     this.subPanel.style.width = `${100 - this.mainPanelWidthPerc}%`
     return container
@@ -500,10 +512,13 @@ function renderGallery(prefix, images) {
       // choose filler images now
       // consider aspect ratio of the remaining panels and pick appropriate images
       for (let i = 0; i < needed; i++) {
-        let panel = "BCDE"[i]
-        let panelW = internalWidth * band.subPanelWidthPerc[panel] // pixels
-        let panelH = band.height * band.subPanelHeightPerc[panel] // pixels
-        let panelRatio = panelW / panelH // same format as .json
+        // Skip index 0 since that's the main panel 'A'
+        let panelIndex = i + 1;
+        let panel = band.panelLetters[panelIndex]; // Get the actual panel letter for this index
+
+        let panelW = internalWidth * band.subPanelWidthPerc[panel]
+        let panelH = band.height * band.subPanelHeightPerc[panel]
+        let panelRatio = panelW / panelH
 
         // pick images from `lesser` that closely matches the ratio
         let chosen = lesser.filter(it => (4/5) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (5/4)).randomPick()
@@ -514,10 +529,10 @@ function renderGallery(prefix, images) {
         }
 
         if (chosen) {
-          console.log(`Layout ${rule}; Panel ${panel}; panelDim=${panelW}x${panelH}; panelRatio=${panelRatio}; imgRatio=${chosen.ratio}; image=${chosen.title}; iw=${internalWidth}`)
+          console.log(`Layout ${rule}; Panel ${panel}; panelDim=${panelW|0}x${panelH|0}; panelRatio=${panelRatio}; imgRatio=${chosen.ratio}; image=${chosen.title}; iw=${internalWidth}`)
         }
         else {
-          console.log(`Layout ${rule}; Panel ${panel}; panelDim=${panelW}x${panelH}; panelRatio=${panelRatio}; iw=${internalWidth}; no viable image found`)
+          console.log(`Layout ${rule}; Panel ${panel}; panelDim=${panelW|0}x${panelH|0}; panelRatio=${panelRatio}; iw=${internalWidth}; no viable image found`)
         }
 
         // relax the error margin
@@ -532,6 +547,12 @@ function renderGallery(prefix, images) {
 
         fillers.push(chosen)
         lesser.removeElem(chosen)
+
+        if (band.DEBUG) {
+          band.picturePanels[panelIndex].setAttribute("panel2", panel)
+          band.picturePanels[panelIndex].setAttribute("w", panelW|0)
+          band.picturePanels[panelIndex].setAttribute("h", panelH|0)
+        }
       }
 
       if (fillers.length >= needed) { // fillers.length is always same as `needed` if all filler images were found
