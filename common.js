@@ -476,9 +476,39 @@ function renderGallery(prefix, images) {
   while (important.length > 0) {
     let fillers = []
     let rule = ''
-    const main = important.pop();
-    //const ruleSet = shuffle(selectRuleSet(main, internalWidth));
-    const ruleSet = shuffle(['A', 'B', 'D', 'E1', 'E2', 'F1', 'F2', 'G', 'I']);
+
+    // If we're running low on filler images, sort remaining important images
+    // to process narrow/square ones first, leaving wide ones for the end
+    let main;
+    if (lesser.length == 0 && important.length > 1) {
+      // Sort remaining important images by aspect ratio (narrow first)
+      console.log("Ran out of lesser images, putting important images starting from narrowest")
+      important.sort((a, b) => a.ratio - b.ratio);
+      main = important.shift();
+    } else {
+      // Normal case: just pop from the shuffled array
+      main = important.pop();
+    }
+
+    // Check if we have enough lesser images for complex layouts
+    const hasEnoughFillers = lesser.length >= 4; // Need at most 4 for E1/E2
+
+    let ruleSet;
+    if (hasEnoughFillers) {
+      // Normal case: try all rules
+      ruleSet = shuffle(['A', 'B', 'D', 'E1', 'E2', 'F1', 'F2', 'G', 'I']);
+    } else {
+      // Limited fillers: prioritize simpler rules, but allow some complex ones if we have enough
+      if (lesser.length >= 3) {
+        ruleSet = shuffle(['A', 'B', 'D', 'F1', 'F2', 'G']);
+      } else if (lesser.length >= 2) {
+        ruleSet = shuffle(['A', 'B', 'I']);
+      } else {
+        // Only 0-1 lesser images left: use Rule A only
+        ruleSet = ['A'];
+      }
+    }
+
     // pre-calculated band dimensions
     let adjustedHeight = internalWidth / main.ratio
 
@@ -488,7 +518,7 @@ function renderGallery(prefix, images) {
     // Keep trying rules until we find one that works or run out of rules
     while (!ruleFound && ruleSet.length > 0) {
       rule = ruleSet.pop()
-      console.log(`Band #${bandCount}, trying rule ${rule}`)
+      console.log(`Band #${bandCount}`)
       let needed;
       switch (rule) {
         case 'A': needed = 1; break;
@@ -503,6 +533,18 @@ function renderGallery(prefix, images) {
         case 'H': needed = 2; break;
         case 'I': needed = 2; break;
         default: needed = 2;
+      }
+
+      // Skip this rule if we don't have enough lesser images
+      if (needed > lesser.length + 1) { // +1 because we don't count the main image
+        console.log(`Skipping rule ${rule}: needs ${needed} images but only have ${lesser.length} lesser images`);
+        continue;
+      }
+
+      // unset flip status if this is the last band
+      if (important.length == 1) {
+        console.log("only one image remains:", important[0].title, lesser)
+        bandCount++
       }
 
       band = makeBandClass(prefix, rule, adjustedHeight)
@@ -524,25 +566,20 @@ function renderGallery(prefix, images) {
         let panelH = band.height * band.subPanelHeightPerc[panel]
         let panelRatio = panelW / panelH
 
-        // pick images from `lesser` that closely matches the ratio
-        let chosen = lesser.filter(it => (4/5) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (5/4)).randomPick()
+        let imgBin = (lesser.length > 0) ? lesser : important
+
+        // pick images from `imgBin` that closely matches the ratio
+        let chosen = imgBin.filter(it => (4/5) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (5/4)).randomPick()
 
         // relax the error margin
         if (!chosen) {
-          chosen = lesser.filter(it => (3/4) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (4/3)).randomPick()
-        }
-
-        if (chosen) {
-          console.log(`Layout ${rule}; Panel ${panel}; panelDim=${panelW|0}x${panelH|0}; panelRatio=${panelRatio}; imgRatio=${chosen.ratio}; image=${chosen.title}; iw=${internalWidth}`)
-        }
-        else {
-          console.log(`Layout ${rule}; Panel ${panel}; panelDim=${panelW|0}x${panelH|0}; panelRatio=${panelRatio}; iw=${internalWidth}; no viable image found`)
+          chosen = imgBin.filter(it => (3/4) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (4/3)).randomPick()
         }
 
         // relax the error margin
-        /*if (!chosen) {
-          chosen = lesser.filter(it => (2/3) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (3/2)).randomPick()
-        }*/
+        if (!chosen) {
+          chosen = imgBin.filter(it => (2/3) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (3/2)).randomPick()
+        }
 
         // if 66% to 150% is not enough, bail out
         if (!chosen) {
@@ -550,7 +587,7 @@ function renderGallery(prefix, images) {
         }
 
         fillers.push(chosen)
-        lesser.removeElem(chosen)
+        imgBin.removeElem(chosen)
 
         if (band.DEBUG) {
           band.picturePanels[panelIndex].setAttribute("panel2", panel)
@@ -578,17 +615,15 @@ function renderGallery(prefix, images) {
 
     // If no rule worked with available filler images
     if (!ruleFound) {
-      console.log("No viable layout found", main, lesser)
-      // if no lesser images are available, use Rule A and put just the main image
-      if (lesser.length == 0) {
-        rule = 'A'
-        band = makeBandClass(prefix, rule, adjustedHeight)
-        band.putImages([main])
-        band.adjustBandPartitioning(internalWidth)
-      }
-      else {
-        throw Error()
-      }
+      console.log("No viable layout found for:", main.title || main.ord, "remaining lesser images:", lesser.length)
+
+      // Fallback to Rule A with just the main image
+      rule = 'A'
+      band = makeBandClass(prefix, rule, adjustedHeight)
+      band.putImages([main])
+      band.adjustBandPartitioning(internalWidth)
+
+      console.log(`Fallback: Using Rule A for image ${main.title || main.ord}`)
     }
 
     band.adjustForEvenFit()
