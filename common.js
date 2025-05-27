@@ -510,6 +510,10 @@ function renderGallery(prefix, images) {
       band.adjustBandPartitioning(internalWidth) // this calculates band height and sub panel width
 
       // choose filler images now
+
+      // reset fillers
+      fillers = []
+
       // consider aspect ratio of the remaining panels and pick appropriate images
       for (let i = 0; i < needed; i++) {
         // Skip index 0 since that's the main panel 'A'
@@ -565,7 +569,10 @@ function renderGallery(prefix, images) {
       }
       else {
         // Not enough filler images, put them back and try next rule
-        lesser.unshift(...fillers);
+        // Put back images without creating duplicates
+        const lesserSet = new Set(lesser);
+        fillers.forEach(img => lesserSet.add(img));
+        lesser = Array.from(lesserSet);
       }
     }
 
