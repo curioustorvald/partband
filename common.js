@@ -106,14 +106,13 @@ function computeBandHeight(images, rule, containerWidth) {
   return height;
 }
 
-Object.prototype.setColRow = function(cols, rows) {
-  this.style.gridTemplateColumns = '1fr '.repeat(cols).trim()
-  this.style.gridTemplateRows = '1fr '.repeat(rows).trim()
+function setColRow(elem, cols, rows) {
+  elem.style.gridTemplateColumns = '1fr '.repeat(cols).trim()
+  elem.style.gridTemplateRows = '1fr '.repeat(rows).trim()
 }
 
 class PartitionedBand {
   DEBUG = 1
-
 
   prefix = ''
   mainPanel = document.createElement('bandpanel')
@@ -126,7 +125,6 @@ class PartitionedBand {
   resizeHandles = {}
   // Adjustment factors for panel sizes (0.5 = default, <0.5 shrinks first panel, >0.5 grows it)
   resizeFactors = {}
-
 
   subPanelWidthPerc = {} // alphabet to number. Remains empty until adjustBandPartitioning is called. 0-1
   subPanelHeightPerc = {} // alphabet to number. Remains empty until adjustBandPartitioning is called. 0-1
@@ -229,6 +227,174 @@ class PartitionedBand {
         parentGrid.style.gridTemplateRows = rows.join(' ');
       }
     }
+
+    // Update the stored panel dimensions after resize
+    this.#updateStoredPanelDimensions();
+  }
+
+  // NEW METHOD: Update stored panel dimensions based on current resize ratios
+  #updateStoredPanelDimensions() {
+    // Recalculate subPanelWidthPerc and subPanelHeightPerc based on current resize ratios
+    this.#recalculatePanelDimensions();
+  }
+
+  // NEW METHOD: Recalculate panel dimensions based on resize handle ratios
+  #recalculatePanelDimensions() {
+    const baseSubWidth = 1.0 - (this.mainPanelWidth / INTERNAL_WIDTH);
+    const baseSubHeight = 1.0;
+
+    let rowRatio, colRatio, leftColWidth, rightColWidth, topRowHeight, bottomRowHeight = 0.0;
+
+    switch (this.rule) {
+      case 'A':
+        // No sub-panels to adjust
+        break;
+
+      case 'B': case 'C': case 'H':
+        // Vertical split in sub-panel (B above C)
+        if (this.resizeFactors['B-C']) {
+          const ratio = this.resizeFactors['B-C'];
+          this.subPanelHeightPerc.B = ratio;
+          this.subPanelHeightPerc.C = 1 - ratio;
+        }
+        this.subPanelWidthPerc.B = baseSubWidth;
+        this.subPanelWidthPerc.C = baseSubWidth;
+        break;
+
+      case 'D':
+        // Three vertical panels in sub-panel
+        // This is more complex - we need to handle B-C and C-D ratios
+        let heightB = 1/3, heightC = 1/3, heightD = 1/3;
+
+        if (this.resizeFactors['B-C'] && this.resizeFactors['C-D']) {
+          const ratioBc = this.resizeFactors['B-C'];
+          const ratioCd = this.resizeFactors['C-D'];
+
+          // Distribute heights based on both ratios
+          // This is a simplified approach - you might want a more sophisticated algorithm
+          const totalBC = ratioBc + (1 - ratioBc);
+          const totalCD = ratioCd + (1 - ratioCd);
+
+          heightB = ratioBc * (2/3);
+          heightC = (1 - ratioBc) * (2/3) * ratioCd;
+          heightD = (1 - ratioBc) * (2/3) * (1 - ratioCd) + (1/3);
+        }
+
+        this.subPanelHeightPerc.B = heightB;
+        this.subPanelHeightPerc.C = heightC;
+        this.subPanelHeightPerc.D = heightD;
+        this.subPanelWidthPerc.B = baseSubWidth;
+        this.subPanelWidthPerc.C = baseSubWidth;
+        this.subPanelWidthPerc.D = baseSubWidth;
+        break;
+
+      case 'E1':
+        // Two columns in sub-panel, each with two rows
+        colRatio = this.resizeFactors['BD-CE'] || 0.5;
+        leftColWidth = baseSubWidth * colRatio;
+        rightColWidth = baseSubWidth * (1 - colRatio);
+
+        this.subPanelWidthPerc.B = leftColWidth;
+        this.subPanelWidthPerc.D = leftColWidth;
+        this.subPanelWidthPerc.C = rightColWidth;
+        this.subPanelWidthPerc.E = rightColWidth;
+
+        // Handle vertical ratios within each column
+        if (this.resizeFactors['B-D']) {
+          const bdRatio = this.resizeFactors['B-D'];
+          this.subPanelHeightPerc.B = bdRatio;
+          this.subPanelHeightPerc.D = 1 - bdRatio;
+        }
+        if (this.resizeFactors['C-E']) {
+          const ceRatio = this.resizeFactors['C-E'];
+          this.subPanelHeightPerc.C = ceRatio;
+          this.subPanelHeightPerc.E = 1 - ceRatio;
+        }
+        break;
+
+      case 'E2':
+        // Two rows in sub-panel, each with two columns
+        rowRatio = this.resizeFactors['BC-DE'] || 0.5;
+        topRowHeight = rowRatio;
+        bottomRowHeight = 1 - rowRatio;
+
+        this.subPanelHeightPerc.B = topRowHeight;
+        this.subPanelHeightPerc.C = topRowHeight;
+        this.subPanelHeightPerc.D = bottomRowHeight;
+        this.subPanelHeightPerc.E = bottomRowHeight;
+
+        // Handle horizontal ratios within each row
+        if (this.resizeFactors['B-C']) {
+          const bcRatio = this.resizeFactors['B-C'];
+          this.subPanelWidthPerc.B = baseSubWidth * bcRatio;
+          this.subPanelWidthPerc.C = baseSubWidth * (1 - bcRatio);
+        }
+        if (this.resizeFactors['D-E']) {
+          const deRatio = this.resizeFactors['D-E'];
+          this.subPanelWidthPerc.D = baseSubWidth * deRatio;
+          this.subPanelWidthPerc.E = baseSubWidth * (1 - deRatio);
+        }
+        break;
+
+      case 'F1':
+        // B on top, C and D side by side on bottom
+        const f1RowRatio = this.resizeFactors['B-CD'] || 0.5;
+        this.subPanelHeightPerc.B = f1RowRatio;
+        this.subPanelHeightPerc.C = 1 - f1RowRatio;
+        this.subPanelHeightPerc.D = 1 - f1RowRatio;
+        this.subPanelWidthPerc.B = baseSubWidth;
+
+        if (this.resizeFactors['C-D']) {
+          const cdRatio = this.resizeFactors['C-D'];
+          this.subPanelWidthPerc.C = baseSubWidth * cdRatio;
+          this.subPanelWidthPerc.D = baseSubWidth * (1 - cdRatio);
+        }
+        break;
+
+      case 'F2':
+        // B and C side by side on top, D on bottom
+        const f2RowRatio = this.resizeFactors['BC-D'] || 0.5;
+        this.subPanelHeightPerc.B = f2RowRatio;
+        this.subPanelHeightPerc.C = f2RowRatio;
+        this.subPanelHeightPerc.D = 1 - f2RowRatio;
+        this.subPanelWidthPerc.D = baseSubWidth;
+
+        if (this.resizeFactors['B-C']) {
+          const bcRatio = this.resizeFactors['B-C'];
+          this.subPanelWidthPerc.B = baseSubWidth * bcRatio;
+          this.subPanelWidthPerc.C = baseSubWidth * (1 - bcRatio);
+        }
+        break;
+
+      case 'G':
+        // B and D in left column, C in right column
+        const gColRatio = this.resizeFactors['BD-C'] || 0.5;
+        leftColWidth = baseSubWidth * gColRatio;
+        rightColWidth = baseSubWidth * (1 - gColRatio);
+
+        this.subPanelWidthPerc.B = leftColWidth;
+        this.subPanelWidthPerc.D = leftColWidth;
+        this.subPanelWidthPerc.C = rightColWidth;
+        this.subPanelHeightPerc.C = 1.0;
+
+        if (this.resizeFactors['B-D']) {
+          const bdRatio = this.resizeFactors['B-D'];
+          this.subPanelHeightPerc.B = bdRatio;
+          this.subPanelHeightPerc.D = 1 - bdRatio;
+        }
+        break;
+
+      case 'I':
+        // Two horizontal panels
+        if (this.resizeFactors['B-C']) {
+          const ratio = this.resizeFactors['B-C'];
+          this.subPanelWidthPerc.B = baseSubWidth * ratio;
+          this.subPanelWidthPerc.C = baseSubWidth * (1 - ratio);
+        }
+        this.subPanelHeightPerc.B = 1.0;
+        this.subPanelHeightPerc.C = 1.0;
+        break;
+    }
   }
 
   #addPicturePanel(panel, letter) {
@@ -238,10 +404,10 @@ class PartitionedBand {
 
   constructor(prefix, rule, flip, images) {
     this.prefix = prefix
-    this.mainPanel.setColRow(1, 1)
+    setColRow(this.mainPanel, 1, 1)
     this.mainPanel.className = 'main leaf'
     this.mainPanel.setAttribute('panel', 'A')
-    this.subPanel.setColRow(1, 1)
+    setColRow(this.subPanel, 1, 1)
     this.subPanel.className = 'sub'
     this.picturePanels.push(this.mainPanel) // index 0
     this.panelLetters.push('A')
@@ -259,10 +425,10 @@ class PartitionedBand {
         break;
 
       case 'B': case 'C': case 'H':
-        this.isThreeCol = ('H' == rule)
+        this.#isThreeCol = ('H' == rule)
         panelB = this.#createLeafPanel('B')
         panelC = this.#createLeafPanel('C')
-        this.subPanel.setColRow(1, 2)
+        setColRow(this.subPanel, 1, 2)
         this.subPanel.appendChild(panelB)
         this.subPanel.appendChild(panelC)
         this.#addPicturePanel(panelB, 'B')
@@ -274,7 +440,7 @@ class PartitionedBand {
         panelB = this.#createLeafPanel('B')
         panelC = this.#createLeafPanel('C')
         panelD = this.#createLeafPanel('D')
-        this.subPanel.setColRow(1, 3)
+        setColRow(this.subPanel, 1, 3)
         this.subPanel.appendChild(panelB)
         this.subPanel.appendChild(panelC)
         this.subPanel.appendChild(panelD)
@@ -286,14 +452,14 @@ class PartitionedBand {
         break;
 
       case 'E1':
-        this.isThreeCol = true
+        this.#isThreeCol = true
         panelB = this.#createLeafPanel('B')
         panelC = this.#createLeafPanel('C')
         panelD = this.#createLeafPanel('D')
         panelE = this.#createLeafPanel('E')
-        panelBD = this.#createIntermediatePanel(); panelBD.setColRow(1, 2)
-        panelCE = this.#createIntermediatePanel(); panelCE.setColRow(1, 2)
-        this.subPanel.setColRow(2, 1)
+        panelBD = this.#createIntermediatePanel(); setColRow(panelBD, 1, 2)
+        panelCE = this.#createIntermediatePanel(); setColRow(panelCE, 1, 2)
+        setColRow(this.subPanel, 2, 1)
         panelBD.appendChild(panelB);panelBD.appendChild(panelD)
         panelCE.appendChild(panelC);panelCE.appendChild(panelE)
         this.subPanel.appendChild(panelBD)
@@ -308,14 +474,14 @@ class PartitionedBand {
         break;
 
       case 'E2':
-        this.isThreeCol = true
+        this.#isThreeCol = true
         panelB = this.#createLeafPanel('B')
         panelC = this.#createLeafPanel('C')
         panelD = this.#createLeafPanel('D')
         panelE = this.#createLeafPanel('E')
-        panelBC = this.#createIntermediatePanel(); panelBC.setColRow(2, 1)
-        panelDE = this.#createIntermediatePanel(); panelDE.setColRow(2, 1)
-        this.subPanel.setColRow(1, 2)
+        panelBC = this.#createIntermediatePanel(); setColRow(panelBC, 2, 1)
+        panelDE = this.#createIntermediatePanel(); setColRow(panelDE, 2, 1)
+        setColRow(this.subPanel, 1, 2)
         panelBC.appendChild(panelB);panelBC.appendChild(panelC)
         panelDE.appendChild(panelD);panelDE.appendChild(panelE)
         this.subPanel.appendChild(panelBC)
@@ -330,12 +496,12 @@ class PartitionedBand {
         break;
 
       case 'F1':
-        this.isThreeCol = true
+        this.#isThreeCol = true
         panelB = this.#createLeafPanel('B')
         panelC = this.#createLeafPanel('C')
         panelD = this.#createLeafPanel('D')
-        panelCD = this.#createIntermediatePanel(); panelCD.setColRow(2, 1)
-        this.subPanel.setColRow(1, 2)
+        panelCD = this.#createIntermediatePanel(); setColRow(panelCD, 2, 1)
+        setColRow(this.subPanel, 1, 2)
         panelCD.appendChild(panelC);panelCD.appendChild(panelD)
         this.subPanel.appendChild(panelB)
         this.subPanel.appendChild(panelCD)
@@ -347,12 +513,12 @@ class PartitionedBand {
         break;
 
       case 'F2':
-        this.isThreeCol = true
+        this.#isThreeCol = true
         panelB = this.#createLeafPanel('B')
         panelC = this.#createLeafPanel('C')
         panelD = this.#createLeafPanel('D')
-        panelBC = this.#createIntermediatePanel(); panelBC.setColRow(2, 1)
-        this.subPanel.setColRow(1, 2)
+        panelBC = this.#createIntermediatePanel(); setColRow(panelBC, 2, 1)
+        setColRow(this.subPanel, 1, 2)
         panelBC.appendChild(panelB);panelBC.appendChild(panelC)
         this.subPanel.appendChild(panelBC)
         this.subPanel.appendChild(panelD)
@@ -364,12 +530,12 @@ class PartitionedBand {
         break;
 
       case 'G':
-        this.isThreeCol = true
+        this.#isThreeCol = true
         panelB = this.#createLeafPanel('B')
         panelC = this.#createLeafPanel('C')
         panelD = this.#createLeafPanel('D')
-        panelBD = this.#createIntermediatePanel(); panelBD.setColRow(1, 2)
-        this.subPanel.setColRow(2, 1)
+        panelBD = this.#createIntermediatePanel(); setColRow(panelBD, 1, 2)
+        setColRow(this.subPanel, 2, 1)
         panelBD.appendChild(panelB);panelBD.appendChild(panelD)
         this.subPanel.appendChild(panelBD)
         this.subPanel.appendChild(panelC)
@@ -381,10 +547,10 @@ class PartitionedBand {
         break;
 
       case 'I':
-        this.isThreeCol = true
+        this.#isThreeCol = true
         panelB = this.#createLeafPanel('B')
         panelC = this.#createLeafPanel('C')
-        this.subPanel.setColRow(2, 1)
+        setColRow(this.subPanel, 2, 1)
         this.subPanel.appendChild(panelB)
         this.subPanel.appendChild(panelC)
         this.#addPicturePanel(panelB, 'B')
@@ -421,6 +587,7 @@ class PartitionedBand {
       this.putImages(images)
     }
   }
+
   putImages(imgs) {
     //console.log("putImages", imgs)
     this.picturePanels.forEach((panel, i) => {
@@ -486,7 +653,6 @@ class PartitionedBand {
       // Try adjusting each resize handle
       for (const handleId in this.resizeHandles) {
         const handle = this.resizeHandles[handleId];
-        console.log(handle)
         const originalRatio = handle.getRatio();
 
         // Try increasing the ratio
@@ -517,21 +683,25 @@ class PartitionedBand {
       }
     }
 
-    // TODO Update panel dimensions after optimization
+    // Update the stored panel dimensions after optimization
+    this.#updateStoredPanelDimensions();
 
+    return bestError;
   }
+
   #heightfun(imgRatio) {
     const MAX = 0.5 * (4/3) * INTERNAL_WIDTH
     const MIN = 0.5 / (4/3) * INTERNAL_WIDTH
     return coerceIn(1 / (2*imgRatio) * INTERNAL_WIDTH, MIN, MAX)
   }
+
   adjustBandPartitioning() {
     let mainImageRatio = this.#images[0].ratio
     let targetWidth = (this.#isThreeCol) ?
         (INTERNAL_WIDTH * 0.7 * mainImageRatio) :
         (INTERNAL_WIDTH * 0.5 * mainImageRatio)
 
-    this.height = Math.round(this.#heightfun(INTERNAL_WIDTH, mainImageRatio))|0
+    this.height = Math.round(this.#heightfun(mainImageRatio))|0
     let widthPx = this.height * mainImageRatio
     this.mainPanelWidth = widthPx
     this.mainPanelWidthPerc = widthPx / INTERNAL_WIDTH * 100
@@ -560,7 +730,11 @@ class PartitionedBand {
         this.subPanelWidthPerc.C = this.subPanelWidthPerc.D / 2
         break;
     }
+
+    // Apply current resize ratios to the calculated dimensions
+    this.#recalculatePanelDimensions();
   }
+
   makeHTMLelement() {
     const container = document.createElement('band');
     if (!this.flipped) {
@@ -577,7 +751,30 @@ class PartitionedBand {
     }
     this.mainPanel.style.width = `${this.mainPanelWidthPerc}%`
     this.subPanel.style.width = `${100 - this.mainPanelWidthPerc}%`
+
+    // Apply the current panel sizes from resize handles to the actual DOM elements
+    this.#applyPanelSizesToDOM();
+
     return container
+  }
+
+  // NEW METHOD: Apply current panel sizes to DOM elements
+  #applyPanelSizesToDOM() {
+    // The resize handles have already updated the grid template columns/rows
+    // This method can be used for any additional DOM updates if needed
+
+    // For debugging, you might want to log the current panel sizes
+    if (this.DEBUG) {
+      console.log('Current panel dimensions:');
+      console.log('Main panel:', `${this.mainPanelWidthPerc}% x ${this.height}px`);
+
+      for (let i = 1; i < this.panelLetters.length; i++) {
+        const letter = this.panelLetters[i];
+        const width = INTERNAL_WIDTH * this.subPanelWidthPerc[letter];
+        const height = this.height * this.subPanelHeightPerc[letter];
+        console.log(`Panel ${letter}:`, `${width}px x ${height}px`);
+      }
+    }
   }
 }
 
