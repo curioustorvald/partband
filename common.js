@@ -537,8 +537,14 @@ class PartitionedBand {
         panelBD = this.#createIntermediatePanel(); setColRow(panelBD, 1, 2)
         setColRow(this.subPanel, 2, 1)
         panelBD.appendChild(panelB);panelBD.appendChild(panelD)
-        this.subPanel.appendChild(panelBD)
-        this.subPanel.appendChild(panelC)
+        if (this.flipped) {
+          this.subPanel.appendChild(panelC)
+          this.subPanel.appendChild(panelBD)
+        }
+        else {
+          this.subPanel.appendChild(panelBD)
+          this.subPanel.appendChild(panelC)
+        }
         this.#addPicturePanel(panelB, 'B')
         this.#addPicturePanel(panelC, 'C')
         this.#addPicturePanel(panelD, 'D')
@@ -902,7 +908,10 @@ function renderGallery(prefix, images) {
       // unset flip status if this is the last band
       if (important.length == 1) {
         console.log("only one image remains:", important[0].title, lesser)
-        bandCount++
+
+        if (bandCount % 2 == 0) {
+          bandCount++
+        }
       }
 
       band = makeBandClass(prefix, rule, adjustedHeight)
