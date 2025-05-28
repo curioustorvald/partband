@@ -855,12 +855,14 @@ function renderGallery(prefix, images) {
     }
 
     // Check if we have enough lesser images for complex layouts
-    const hasEnoughFillers = lesser.length >= 4; // Need at most 4 for E1/E2
+    //// temporarily disabling rule E1 and E2
+    const hasEnoughFillers = lesser.length >= 3// 4; // Need at most 4 for E1/E2
 
     let ruleSet;
     if (hasEnoughFillers) {
       // Normal case: try all rules
-      ruleSet = shuffle(['A', 'B', 'D', 'E1', 'E2', 'F1', 'F2', 'G', 'I']);
+      //// temporarily disabling rule E1 and E2
+      ruleSet = shuffle(['A', 'B', 'D', /*'E1', 'E2',*/ 'F1', 'F2', 'G', 'I']);
     } else {
       // Limited fillers: prioritize simpler rules, but allow some complex ones if we have enough
       if (lesser.length >= 3) {
