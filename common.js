@@ -1011,7 +1011,8 @@ function renderGallery(prefix, images) {
 
 function precalculateDim(imgObjs) {
   Object.keys(imgObjs).forEach(i => {
-    imgObjs[i].ratio0 = eval(imgObjs[i].dim)
+    let [num, denom] = imgObjs[i].dim.split('/')
+    imgObjs[i].ratio0 = num / denom
     imgObjs[i].ratio = clippedImageDim(imgObjs[i].ratio0)
   })
 }
