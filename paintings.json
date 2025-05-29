@@ -43,7 +43,7 @@
 
         {"ord":10000, "dim":"6614/4000", "title":"Looming", "author":"Solutionwcs", "year":2024, "height":6000000, "mass":70, "epic":60, "tags":["Foot Focused"]},
         {"ord":10010, "dim":"4000/3000", "title":"Small Rampage", "author":"Renatii", "year":2022, "height":100, "mass":75, "epic":40, "tags":["Destruction", "Size Difference"], "featuring":["Tamerlane"]},
-        {"ord":10020, "dim":"4093/2894", "title":"Featured in Made Fur 00", "author":"Rankiti", "year":2024, "height":3, "mass":75, "tags":[]},
+        {"ord":10020, "dim":"4093/2894", "title":"Featured in Made Fur 00", "author":"Rankiti", "year":2024, "height":3, "mass":75, "epic":30, "tags":[]},
 
         {"ord":100000, "dim":"2966/3714", "title":"Big Mood", "author":"Solutionwcs", "year":2023, "height":2, "mass":0, "epic":20, "tags":[]},
         {"ord":100010, "dim":"1200/1200", "title":"Happy Birthday 2023", "author":"Ychicken", "year":2023, "height":2, "mass":0, "tags":["Clothed"], "featuring":["Vulpe"]},

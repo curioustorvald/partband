@@ -246,7 +246,7 @@ class PartitionedBand {
     let rowRatio, colRatio, leftColWidth, rightColWidth, topRowHeight, bottomRowHeight = 0.0;
 
     switch (this.rule) {
-      case 'A':
+      case 'A': case 'O':
         // No sub-panels to adjust
         break;
 
@@ -418,6 +418,10 @@ class PartitionedBand {
     let panelB, panelC, panelD, panelE, panelBD, panelCD, panelCE, panelBC, panelDE;
 
     switch(rule) {
+      case 'O':
+        this.resizeHandles = []
+        break;
+
       case 'A':
         this.#addPicturePanel(this.subPanel, 'B')
         this.subPanel.className = 'sub leaf'
@@ -642,6 +646,7 @@ class PartitionedBand {
   }
 
   adjustForEvenFit() {
+    if ('O' == this.rule) return;
     // Implementation for optimizing panel ratios to minimize RMS error
     // This uses a simple hill-climbing approach to adjust resize handles
 
@@ -703,12 +708,14 @@ class PartitionedBand {
 
   adjustBandPartitioning() {
     let mainImageRatio = this.#images[0].ratio
-    let targetWidth = (this.#isThreeCol) ?
-        (INTERNAL_WIDTH * 0.7 * mainImageRatio) :
-        (INTERNAL_WIDTH * 0.5 * mainImageRatio)
 
-    this.height = Math.round(this.#heightfun(mainImageRatio))|0
-    let widthPx = this.height * mainImageRatio
+    if ('O' == this.rule) {
+      this.height = Math.round(INTERNAL_WIDTH / mainImageRatio)|0
+    }
+    else {
+      this.height = Math.round(this.#heightfun(mainImageRatio))|0
+    }
+    let widthPx = ('O' == this.rule) ? INTERNAL_WIDTH : this.height * mainImageRatio
     this.mainPanelWidth = widthPx
     this.mainPanelWidthPerc = widthPx / INTERNAL_WIDTH * 100
 
@@ -743,48 +750,33 @@ class PartitionedBand {
 
   makeHTMLelement() {
     const container = document.createElement('band');
-    if (!this.flipped) {
+    if ('O' == this.rule) {
       container.appendChild(this.mainPanel)
-      container.appendChild(this.subPanel)
+      container.style.height = `${this.height}px`
+      if (this.DEBUG) {
+        container.setAttribute('rule', this.rule)
+      }
+      this.mainPanel.style.width = `100%`
     }
     else {
-      container.appendChild(this.subPanel)
-      container.appendChild(this.mainPanel)
+      if (!this.flipped) {
+        container.appendChild(this.mainPanel)
+        container.appendChild(this.subPanel)
+      }
+      else {
+        container.appendChild(this.subPanel)
+        container.appendChild(this.mainPanel)
+      }
+      container.style.height = `${this.height}px`
+      if (this.DEBUG) {
+        container.setAttribute('rule', this.rule)
+      }
+      this.mainPanel.style.width = `${this.mainPanelWidthPerc}%`
+      this.subPanel.style.width = `${100 - this.mainPanelWidthPerc}%`
     }
-    container.style.height = `${this.height}px`
-    if (this.DEBUG) {
-      container.setAttribute('rule', this.rule)
-    }
-    this.mainPanel.style.width = `${this.mainPanelWidthPerc}%`
-    this.subPanel.style.width = `${100 - this.mainPanelWidthPerc}%`
-
-    // Apply the current panel sizes from resize handles to the actual DOM elements
-    this.#applyPanelSizesToDOM();
 
     return container
   }
-
-  // NEW METHOD: Apply current panel sizes to DOM elements
-  #applyPanelSizesToDOM() {
-    // The resize handles have already updated the grid template columns/rows
-    // This method can be used for any additional DOM updates if needed
-
-    // For debugging, you might want to log the current panel sizes
-    if (this.DEBUG) {
-      console.log('Current panel dimensions:');
-      console.log('Main panel:', `${this.mainPanelWidthPerc}% x ${this.height}px`);
-
-      for (let i = 1; i < this.panelLetters.length; i++) {
-        const letter = this.panelLetters[i];
-        const width = INTERNAL_WIDTH * this.subPanelWidthPerc[letter];
-        const height = this.height * this.subPanelHeightPerc[letter];
-        console.log(`Panel ${letter}:`, `${width}px x ${height}px`);
-      }
-    }
-  }
-}
-
-function constructPartition(label) {
 
 }
 
@@ -798,7 +790,7 @@ function panel(image, col, row, flip) {
 }
 
 let bandCount = 1
-function makeBandClass(prefix, rule, height) {
+function makeBandClass(prefix, rule) {
   const flip = bandCount % 2 === 0;
   const bandClass = new PartitionedBand(prefix, rule, flip)
   return bandClass
@@ -858,20 +850,35 @@ function renderGallery(prefix, images) {
     //// temporarily disabling rule E1 and E2
     const hasEnoughFillers = lesser.length >= 3// 4; // Need at most 4 for E1/E2
 
+    const isHighlyEpic = main.epic >= 80
+
     let ruleSet;
-    if (hasEnoughFillers) {
-      // Normal case: try all rules
-      //// temporarily disabling rule E1 and E2
-      ruleSet = shuffle(['A', 'B', 'D', /*'E1', 'E2',*/ 'F1', 'F2', 'G', 'I']);
-    } else {
-      // Limited fillers: prioritize simpler rules, but allow some complex ones if we have enough
-      if (lesser.length >= 3) {
-        ruleSet = shuffle(['A', 'B', 'D', 'F1', 'F2', 'G']);
-      } else if (lesser.length >= 2) {
-        ruleSet = shuffle(['A', 'B', 'I']);
-      } else {
-        // Only 0-1 lesser images left: use Rule A only
-        ruleSet = ['A'];
+    if (isHighlyEpic) {
+      if (main.ratio >= 1.5)
+        ruleSet = ['O'];
+      else if (main.ratio >= 1.3)
+        ruleSet = shuffle(['A', 'I']);
+      else if (main.ratio <= 0.75)
+        ruleSet = shuffle(['F1', 'F2', 'B', 'C']);
+      else
+        ruleSet = shuffle(['F1', 'F2', 'B', 'I']);
+    }
+    else {
+      if (hasEnoughFillers) {
+        // Normal case: try all rules
+        //// temporarily disabling rule E1 and E2
+        ruleSet = shuffle(['A', 'B', 'D', /*'E1', 'E2',*/ 'F1', 'F2', 'G', 'I']);
+      }
+      else {
+        // Limited fillers: prioritize simpler rules, but allow some complex ones if we have enough
+        if (lesser.length >= 3) {
+          ruleSet = shuffle(['A', 'B', 'D', 'F1', 'F2', 'G']);
+        } else if (lesser.length >= 2) {
+          ruleSet = shuffle(['A', 'B', 'I']);
+        } else {
+          // Only 0-1 lesser images left: use Rule A only
+          ruleSet = ['A'];
+        }
       }
     }
 
@@ -887,6 +894,7 @@ function renderGallery(prefix, images) {
       console.log(`Band #${bandCount}`)
       let needed;
       switch (rule) {
+        case 'O': needed = 0; break;
         case 'A': needed = 1; break;
         case 'B': needed = 2; break;
         case 'C': needed = 2; break;
@@ -916,7 +924,7 @@ function renderGallery(prefix, images) {
         }
       }
 
-      band = makeBandClass(prefix, rule, adjustedHeight)
+      band = makeBandClass(prefix, rule)
       band.putImages([main]) // put main image only for adjustBandPartitioning
       band.adjustBandPartitioning() // this calculates band height and sub panel width
 
@@ -988,7 +996,7 @@ function renderGallery(prefix, images) {
 
       // Fallback to Rule A with just the main image
       rule = 'A'
-      band = makeBandClass(prefix, rule, adjustedHeight)
+      band = makeBandClass(prefix, rule)
       band.putImages([main])
       band.adjustBandPartitioning()
 
