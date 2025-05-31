@@ -602,9 +602,12 @@ class PartitionedBand {
     //console.log("putImages", imgs)
     this.picturePanels.forEach((panel, i) => {
       if (imgs[i]) {
-        //panel.style.backgroundImage = `url(${imgs[i].src})` // adjust to fit the actual data structure
-        let imgURL = `https://cdn.taimuworld.com/${this.prefix}_thumbs/${imgs[i].ord}.webp`
+        let ord = imgs[i].ord
+        let imgURL = `https://cdn.taimuworld.com/${this.prefix}_thumbs/${ord}.webp`
         panel.style.backgroundImage = `url(${imgURL})` // adjust to fit the actual data structure
+        let isImageNSFW = (10 < ord && ord % 10 != 0) || (10000 <= ord && ord < 100000) || (200000 <= ord && ord <= 400000)
+
+        panel.setAttribute("nsfw", isImageNSFW|0)
       }
     })
 
@@ -935,15 +938,6 @@ function renderGallery(elemID, prefix, images) {
         continue;
       }
 
-      // unset flip status if this is the last band
-      if (important.length == 1 && lesser.length == 0) {
-        console.log("only one image remains:", important[0].title, lesser)
-
-        if (bandCount % 2 == 0) {
-          bandCount++
-        }
-      }
-
       band = makeBandClass(prefix, rule)
       band.putImages([main]) // put main image only for adjustBandPartitioning
       band.adjustBandPartitioning() // this calculates band height and sub panel width
@@ -1090,7 +1084,7 @@ function swapPenultAwithLastO(gallery, bands) {
   return ret
 }
 
-function mergeTwoUnderfilledAs(gallery, bands) {
+function mergeTwoUnderfilledAs(gallery, bands, imgObjs) {
   let ret = false
   if (bands.length >= 2) {
     const [last, penult] = [bands[bands.length - 1], bands[bands.length - 2]]
@@ -1120,11 +1114,14 @@ function mergeTwoUnderfilledAs(gallery, bands) {
         penultEmptyPanel.style.backgroundImage = lastPicturePanel.style.backgroundImage
 
         // resize the band
-        //TODO
-        // also need to determine penultMainPanel is on the left or right
-        let img1Ord = (penultMainPanel.style.backgroundImages.match(/(\d+)\.webp/)[1])|0
-        let img2Ord = (penultEmptyPanel.style.backgroundImages.match(/(\d+)\.webp/)[1])|0
-
+        let img1Ord = getImageOrdFromURL(penultMainPanel.style.backgroundImage)
+        let img2Ord = getImageOrdFromURL(penultEmptyPanel.style.backgroundImage)
+        let img1RatioRaw = imgObjs.filter(it => it.ord == img1Ord)[0].ratio
+        let img2RatioRaw = imgObjs.filter(it => it.ord == img2Ord)[0].ratio
+        let img1Ratio = img1RatioRaw / (img1RatioRaw + img2RatioRaw)
+        let img2Ratio = img2RatioRaw / (img1RatioRaw + img2RatioRaw)
+        penultMainPanel.style.width = `${img1Ratio * 100}%`
+        penultEmptyPanel.style.width = `${img2Ratio * 100}%`
 
         // remove the last band from the gallery
         gallery.removeChild(last)
@@ -1155,13 +1152,34 @@ function putUnderfilledAtoLast(gallery, bands) {
   return ret
 }
 
-function turnTrailingAintoO(gallery, bands) {
+function turnTrailingAintoO(gallery, bands, imgObjs) {
   let ret = false
+
+  const last = bands[bands.length - 1]
+  const lastRule = last.getAttribute('rule')
+
+  if (lastRule !== null && lastRule === 'A') {
+    // extract the image from the last
+    const lastPanelWithImage = Array.from(penult.children).filter(child =>
+      child.style.backgroundImage && child.style.backgroundImage !== ''
+    )[0]
+
+    const imageOrd = getImageOrdFromURL(lastPanelWithImage.style.backgruondImage)
+    const imageRatio = imgObjs.filter(it => it.org == imageOrd)[0].ratio
+
+    // turn A-panel into O-panel
+    last.setAttribute('rule', 'O')
+    last.querySelector('.sub.leaf').remove() // nuke it
+
+    // clamp the max height to be INTERNAL_WIDTH
+
+    // set appropriate width using the imageratio
+  }
 
   return ret
 }
 
-function postProcessGallery(elemID, prefix) {
+function postProcessGallery(elemID, prefix, imgObjs) {
   // if the last band is type 'O' and the penultimate band is underfilled (type != 'O' and has only one child), swap them
 
   const gallery = document.getElementById(elemID)
@@ -1169,14 +1187,14 @@ function postProcessGallery(elemID, prefix) {
 
   while (1) {
     let somethingHappened = [
-      putUnderfilledAtoLast(gallery, bands),
-      mergeTwoUnderfilledAs(gallery, bands),
-      swapPenultAwithLastO(gallery, bands),
-      turnTrailingAintoO(gallery, bands)
+      putUnderfilledAtoLast(gallery, bands, imgObjs),
+      mergeTwoUnderfilledAs(gallery, bands, imgObjs),
+      swapPenultAwithLastO(gallery, bands, imgObjs)
     ]
-
     if (!somethingHappened.some(Boolean)) break; // if nothing changed, break
   }
+
+  turnTrailingAintoO(gallery, bands, imgObjs)
 }
 
 function precalculateDim(imgObjs) {
@@ -1187,13 +1205,17 @@ function precalculateDim(imgObjs) {
   })
 }
 
+function getImageOrdFromURL(cssURL) {
+  (cssURL.match(/(\d+)\.webp/)[1])|0
+}
+
 function pack(elemID, prefix) {
   loadJson(`${prefix}.json`, str => {
     let imgObjs0 = JSON.parse(str).arts; precalculateDim(imgObjs0)
     let imgObjs = imgObjs0.filter(it => it.ord % 10 == 0 || it.ord < 10)
     precalculateDim(imgObjs)
     renderGallery(elemID, prefix, imgObjs)
-    postProcessGallery(elemID, prefix)
+    postProcessGallery(elemID, prefix, imgObjs)
   })
 }
 
