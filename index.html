@@ -14,7 +14,7 @@
       margin: 0;
       padding: 0;
     }
-    .gallery {
+    gallery {
       display: flex;
       flex-direction: column;
       gap: var(--gaps);
@@ -67,8 +67,8 @@
     }
   </style>
 </head>
-<body onload="pack('paintings')">
+<body onload="pack('gallerymain', 'paintings')">
   <h1 style="text-align: center">Partitioned Container Band Layout</h1>
-  <div class="gallery" id="gallery"></div>
+  <gallery id="gallerymain"></gallery>
 </body>
 </html>

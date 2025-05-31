@@ -134,6 +134,8 @@ class PartitionedBand {
   height = 0 // pixels
   #isThreeCol = false
 
+  isVertical = false
+
   rule = ''
 
   #createLeafPanel(panel) {
@@ -402,8 +404,9 @@ class PartitionedBand {
     this.panelLetters.push(letter)
   }
 
-  constructor(prefix, rule, flip, images) {
+  constructor(prefix, rule, flip, vertical) {
     this.prefix = prefix
+    this.isVertical = vertical
     setColRow(this.mainPanel, 1, 1)
     this.mainPanel.className = 'main leaf'
     this.mainPanel.setAttribute('panel', 'A')
@@ -593,9 +596,6 @@ class PartitionedBand {
         break;
     }
 
-    if (images) {
-      this.putImages(images)
-    }
   }
 
   putImages(imgs) {
@@ -748,14 +748,18 @@ class PartitionedBand {
     this.#recalculatePanelDimensions();
   }
 
-  makeHTMLelement() {
+  makeHTMLelement(debuginfo) {
     const container = document.createElement('band');
+    container.setAttribute('dir', (this.isVertical) ? 'v' : 'h')
+    if (this.DEBUG && debuginfo !== undefined) {
+      for (const [k, v] of Object.entries(debuginfo)) {
+        container.setAttribute(`D${k}`, v)
+      }
+    }
     if ('O' == this.rule) {
       container.appendChild(this.mainPanel)
       container.style.height = `${this.height}px`
-      if (this.DEBUG) {
-        container.setAttribute('rule', this.rule)
-      }
+      container.setAttribute('rule', this.rule) // this is not a debug symbol
       this.mainPanel.style.width = `100%`
     }
     else {
@@ -768,9 +772,7 @@ class PartitionedBand {
         container.appendChild(this.mainPanel)
       }
       container.style.height = `${this.height}px`
-      if (this.DEBUG) {
-        container.setAttribute('rule', this.rule)
-      }
+      container.setAttribute('rule', this.rule) // this is not a debug symbol
       this.mainPanel.style.width = `${this.mainPanelWidthPerc}%`
       this.subPanel.style.width = `${100 - this.mainPanelWidthPerc}%`
     }
@@ -823,8 +825,8 @@ function clippedImageDim(rawRatio) {
   return (rawRatio < 1.0) ? (0.25/clippedDim) : (4*clippedDim)
 }
 
-function renderGallery(prefix, images) {
-  const gallery = document.getElementById('gallery');
+function renderGallery(elemID, prefix, images) {
+  const gallery = document.getElementById(elemID);
   const shuffled = shuffle([...images]);
   const important = shuffled.filter(img => (img.epic|0) >= 10);
   let lesser = shuffled.filter(img => (img.epic|0) < 10);
@@ -848,7 +850,7 @@ function renderGallery(prefix, images) {
 
     // Check if we have enough lesser images for complex layouts
     //// temporarily disabling rule E1 and E2
-    const hasEnoughFillers = lesser.length >= 3// 4; // Need at most 4 for E1/E2
+    const hasEnoughFillers = lesser.length >= 3; // Need at most 4 for E1/E2
 
     const isHighlyEpic = main.epic >= 80
 
@@ -862,17 +864,35 @@ function renderGallery(prefix, images) {
         ruleSet = shuffle(['F1', 'F2', 'B', 'C']);
       else
         ruleSet = shuffle(['F1', 'F2', 'B', 'I']);
+
+      // append E1 and E2 at the last, if the main image is squarish
+      if (9/10 <= main.ratio && main.ratio <= 10/9) {
+        if (Math.random() >= 0.5) {
+          ruleSet.push('E2'); ruleSet.push('E1')
+        }
+        else {
+          ruleSet.push('E1'); ruleSet.push('E2')
+        }
+      }
     }
     else {
       if (hasEnoughFillers) {
         // Normal case: try all rules
         //// temporarily disabling rule E1 and E2
         ruleSet = shuffle(['A', 'B', 'D', /*'E1', 'E2',*/ 'F1', 'F2', 'G', 'I']);
+
+        // append E1 and E2 at the last
+        if (Math.random() >= 0.5) {
+          ruleSet.push('E2'); ruleSet.push('E1')
+        }
+        else {
+          ruleSet.push('E1'); ruleSet.push('E2')
+        }
       }
       else {
         // Limited fillers: prioritize simpler rules, but allow some complex ones if we have enough
         if (lesser.length >= 3) {
-          ruleSet = shuffle(['A', 'B', 'D', 'F1', 'F2', 'G']);
+          ruleSet = shuffle(['A', 'B', 'D', 'F1', 'F2', 'G', 'I']);
         } else if (lesser.length >= 2) {
           ruleSet = shuffle(['A', 'B', 'I']);
         } else {
@@ -891,7 +911,7 @@ function renderGallery(prefix, images) {
     // Keep trying rules until we find one that works or run out of rules
     while (!ruleFound && ruleSet.length > 0) {
       rule = ruleSet.pop()
-      console.log(`Band #${bandCount}`)
+      console.log(`Band #${bandCount}, trying rule ${rule}`)
       let needed;
       switch (rule) {
         case 'O': needed = 0; break;
@@ -910,13 +930,13 @@ function renderGallery(prefix, images) {
       }
 
       // Skip this rule if we don't have enough lesser images
-      if (needed > lesser.length + 1) { // +1 because we don't count the main image
+      if (needed > lesser.length) {
         console.log(`Skipping rule ${rule}: needs ${needed} images but only have ${lesser.length} lesser images`);
         continue;
       }
 
       // unset flip status if this is the last band
-      if (important.length == 1) {
+      if (important.length == 1 && lesser.length == 0) {
         console.log("only one image remains:", important[0].title, lesser)
 
         if (bandCount % 2 == 0) {
@@ -946,22 +966,13 @@ function renderGallery(prefix, images) {
         let imgBin = (lesser.length > 0) ? lesser : important
 
         // pick images from `imgBin` that closely matches the ratio
-        let chosen = imgBin.filter(it => (4/5) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (5/4)).randomPick()
-
-        // relax the error margin
-        if (!chosen) {
-          chosen = imgBin.filter(it => (3/4) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (4/3)).randomPick()
-        }
-
-        // relax the error margin
-        if (!chosen) {
-          chosen = imgBin.filter(it => (2/3) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (3/2)).randomPick()
-        }
+                 let chosen = imgBin.filter(it => (4/5) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (5/4)).randomPick();
+        if (!chosen) chosen = imgBin.filter(it => (3/4) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (4/3)).randomPick();
+        if (!chosen) chosen = imgBin.filter(it => (2/3) < (it.ratio / panelRatio) && (it.ratio / panelRatio) < (3/2)).randomPick();
 
         // if 66% to 150% is not enough, bail out
-        if (!chosen) {
-          break
-        }
+        if (!chosen) break;
+
 
         fillers.push(chosen)
         imgBin.removeElem(chosen)
@@ -992,20 +1003,179 @@ function renderGallery(prefix, images) {
 
     // If no rule worked with available filler images
     if (!ruleFound) {
-      console.log("No viable layout found for:", main.title || main.ord, "remaining lesser images:", lesser.length)
+      if (this.DEBUG) console.log("No viable layout found for:", main.title || main.ord, "; remaining lesser images:", [...lesser], "; remaining important images:", [...important]);
 
-      // Fallback to Rule A with just the main image
+      // Fallback to Rule A and try both main and sub image
       rule = 'A'
       band = makeBandClass(prefix, rule)
-      band.putImages([main])
+
+      // if we still have at least one important image, put it on panel B
+      let subs = [...important].concat([...lesser])
+      // selection time!
+            let sub = subs.filter(it => (4/5) <= it.ratio && it.ratio <= (5/4)).randomPick();
+      if (!sub) sub = subs.filter(it => (3/4) <= it.ratio && it.ratio <= (4/3)).randomPick();
+      if (!sub) sub = subs.filter(it => (2/3) <= it.ratio && it.ratio <= (3/2)).randomPick();
+
+
+      if (sub) {
+        // either of the two remove attempt will succeed as two list are mutually exclusive
+        important.removeElem(sub)
+        lesser.removeElem(sub)
+        // use the chosen image to construct the band
+        band.putImages([main, sub])
+      }
+      else {
+        band.putImages([main])
+      }
+
       band.adjustBandPartitioning()
 
-      console.log(`Fallback: Using Rule A for image ${main.title || main.ord}`)
+      if (this.DEBUG) {
+        if (sub)
+          console.log(`Fallback: Using Rule A for image ${main.title || main.ord} AND ${sub.title || sub.ord}`);
+        else
+          console.log(`Fallback: Using Rule A for image ${main.title || main.ord}`);
+      }
     }
 
     band.adjustForEvenFit()
-    gallery.appendChild(band.makeHTMLelement())
+    gallery.appendChild(band.makeHTMLelement({"band-num": bandCount}))
     bandCount++
+
+
+    if (important.length == 0 && lesser.length > 0) {
+      let img = lesser.randomPop()
+      if (this.DEBUG) {
+        console.log("Ran out of important images but lesser images are available, using random lesser image as an important image")
+        console.log("The image:", img)
+      }
+      important.push(img)
+    }
+  }
+
+  if (this.DEBUG) {
+    if (lesser.length > 0) {
+      console.log(`Too much lesser images:`, lesser)
+    }
+  }
+}
+
+function swapPenultAwithLastO(gallery, bands) {
+  let ret = false
+  if (bands.length >= 2) {
+    const [last, penult] = [bands[bands.length - 1], bands[bands.length - 2]]
+
+    // check the rule of the last
+    const lastRule = last.getAttribute('rule')
+    const lastIsO = (lastRule !== null && lastRule === 'O')
+
+    // check the rule of penult
+    const penultRule = penult.getAttribute('rule')
+    const penultIsNotO = (penultRule !== null && penultRule !== 'O')
+    const penultPanelsWithImage = Array.from(penult.children).filter(child =>
+      child.style.backgroundImage && child.style.backgroundImage !== ''
+    )
+
+    // Check if the penult has exactly one child element
+    const penultHasOneChild = (penultPanelsWithImage.length === 1)
+
+
+    if (lastIsO && penultIsNotO && penultHasOneChild) {
+      last.after(penult)
+      ret = true
+
+      console.log("Swapping A-O to O-A:", penult, last)
+    }
+  }
+  return ret
+}
+
+function mergeTwoUnderfilledAs(gallery, bands) {
+  let ret = false
+  if (bands.length >= 2) {
+    const [last, penult] = [bands[bands.length - 1], bands[bands.length - 2]]
+
+    // check the rule of the last
+    const lastRule = last.getAttribute('rule')
+    const lastIsA = (lastRule !== null && lastRule === 'A')
+    const lastPanelsWithImage = Array.from(last.children).filter(child =>
+      child.style.backgroundImage && child.style.backgroundImage !== ''
+    )
+
+    // check the rule of the penult
+    const penultRule = penult.getAttribute('rule')
+    const penultIsA = (lastRule !== null && lastRule === 'A')
+    const penultPanelsWithImage = Array.from(penult.children).filter(child =>
+      child.style.backgroundImage && child.style.backgroundImage !== ''
+    )
+
+    if (penultIsA && lastIsA && lastPanelsWithImage.length === 1 && penultPanelsWithImage.length === 1) {
+      let lastPicturePanel = last.querySelector(".main.leaf")
+      let penultMainPanel = penult.querySelector(".main.leaf")
+      let penultEmptyPanel = penult.querySelector(".sub.leaf")
+      if (lastPicturePanel !== null && penultEmptyPanel !== null) {
+        console.log("Merging two images into one band:", penultMainPanel.style.backgroundImage, lastPicturePanel.style.backgroundImage)
+
+        // copy image of the last to the empty panel of the penult
+        penultEmptyPanel.style.backgroundImage = lastPicturePanel.style.backgroundImage
+
+        // resize the band
+        //TODO
+        // also need to determine penultMainPanel is on the left or right
+        let img1Ord = (penultMainPanel.style.backgroundImages.match(/(\d+)\.webp/)[1])|0
+        let img2Ord = (penultEmptyPanel.style.backgroundImages.match(/(\d+)\.webp/)[1])|0
+
+
+        // remove the last band from the gallery
+        gallery.removeChild(last)
+
+        ret = true
+      }
+    }
+  }
+  return ret
+}
+
+function putUnderfilledAtoLast(gallery, bands) {
+  let ret = false
+  if (bands.length >= 2) {
+    let underfilled = Array.from(bands).slice(0, -1).filter(it => {
+      const panelsWithImage = Array.from(it.children).filter(child =>
+        child.style.backgroundImage && child.style.backgroundImage !== ''
+      )
+      return (it.getAttribute('rule') === 'A' && panelsWithImage.length === 1)
+    })
+
+    underfilled.forEach(it => {
+      ret = true
+      console.log("Moving underfilled band to the last:", it)
+      gallery.appendChild(it) // apparently it will only move if the element already exists in the DOM
+    })
+  }
+  return ret
+}
+
+function turnTrailingAintoO(gallery, bands) {
+  let ret = false
+
+  return ret
+}
+
+function postProcessGallery(elemID, prefix) {
+  // if the last band is type 'O' and the penultimate band is underfilled (type != 'O' and has only one child), swap them
+
+  const gallery = document.getElementById(elemID)
+  const bands = gallery.children
+
+  while (1) {
+    let somethingHappened = [
+      putUnderfilledAtoLast(gallery, bands),
+      mergeTwoUnderfilledAs(gallery, bands),
+      swapPenultAwithLastO(gallery, bands),
+      turnTrailingAintoO(gallery, bands)
+    ]
+
+    if (!somethingHappened.some(Boolean)) break; // if nothing changed, break
   }
 }
 
@@ -1017,12 +1187,13 @@ function precalculateDim(imgObjs) {
   })
 }
 
-function pack(prefix) {
+function pack(elemID, prefix) {
   loadJson(`${prefix}.json`, str => {
     let imgObjs0 = JSON.parse(str).arts; precalculateDim(imgObjs0)
     let imgObjs = imgObjs0.filter(it => it.ord % 10 == 0 || it.ord < 10)
     precalculateDim(imgObjs)
-    renderGallery(prefix, imgObjs)
+    renderGallery(elemID, prefix, imgObjs)
+    postProcessGallery(elemID, prefix)
   })
 }
 
