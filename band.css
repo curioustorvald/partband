@@ -1,0 +1,80 @@
+* {
+  --gaps: 10px;
+  --nsfw-blur-radius: 128px;
+}
+
+body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+}
+gallery {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gaps);
+  padding: 10px;
+  width: calc(100vw - 20px);
+}
+band {
+  display: flex;
+  gap: var(--gaps);
+  width: 100%;
+  flex-direction: row;
+
+  height: 600px; /* temporary. should be dynamic */
+}
+.panel {
+  background-size: cover;
+  background-position: center;
+  border-radius: 4px;
+}
+bandpanel {
+  display: grid;
+  background-size: cover;
+  background-position: center;
+  border-radius: 8px;
+  gap: var(--gaps);
+  transition: all 0.1s ease;
+}
+bandpanel.main {
+  width: 50%;
+  height: 100%;
+}
+bandpanel.sub {
+  width: 50%;
+  height: 100%;
+}
+
+bandpanel[nsfw="1"] {
+  position: relative;
+  overflow: hidden;
+  transition: filter 0.1s ease;
+}
+
+bandpanel[nsfw="1"]::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--nsfw-blur-radius) * -2);
+  background: inherit;
+  filter: blur(calc(var(--nsfw-blur-radius) * var(--nsfw-blur-enabled)));
+  transform: scale(1.0);
+  z-index: 0;
+  opacity: var(--nsfw-blur-enabled);
+  transition: all 0.1s ease;
+}
+
+@media(max-width: 767px) {
+  band {
+    flex-direction: column;
+
+    height: 1200px; /* temporary. should be dynamic */
+  }
+  bandpanel.main {
+    width: 100%;
+    height: 50%;
+  }
+  bandpanel.sub {
+    width: 100%;
+    height: 50%;
+  }
+}

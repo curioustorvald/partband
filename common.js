@@ -1214,11 +1214,24 @@ function getImageOrdFromURL(cssURL) {
   return (cssURL.match(/(\d+)\.webp/)[1])|0
 }
 
+let showNSFW = false
+
+function toggleNSFW() {
+  if (showNSFW) {
+    lockNSFW()
+  }
+  else {
+    unlockNSFW()
+  }
+}
+
 function unlockNSFW() {
+  showNSFW = true
   document.documentElement.style.setProperty('--nsfw-blur-enabled', '0')
 }
 
 function lockNSFW() {
+  showNSFW = false
   document.documentElement.style.setProperty('--nsfw-blur-enabled', '1')
 }
 
