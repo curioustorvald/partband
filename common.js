@@ -1123,6 +1123,9 @@ function mergeTwoUnderfilledAs(gallery, bands, imgObjs) {
         penultMainPanel.style.width = `${img1Ratio * 100}%`
         penultEmptyPanel.style.width = `${img2Ratio * 100}%`
 
+        // copy over necessary flags (e.g. NSFW) into penultEmptyPanel
+        penultEmptyPanel.setAttribute('nsfw', lastPicturePanel.getAttribute('nsfw'))
+
         // remove the last band from the gallery
         gallery.removeChild(last)
 
@@ -1159,21 +1162,27 @@ function turnTrailingAintoO(gallery, bands, imgObjs) {
   const lastRule = last.getAttribute('rule')
 
   if (lastRule !== null && lastRule === 'A') {
+
     // extract the image from the last
-    const lastPanelWithImage = Array.from(penult.children).filter(child =>
+    const lastPanelWithImage = Array.from(last.children).filter(child =>
       child.style.backgroundImage && child.style.backgroundImage !== ''
-    )[0]
+    )
 
-    const imageOrd = getImageOrdFromURL(lastPanelWithImage.style.backgruondImage)
-    const imageRatio = imgObjs.filter(it => it.org == imageOrd)[0].ratio
+    // of course, only do it when there is no image on the other side
+    if (lastPanelWithImage.length == 1) {
+      console.log("Underfilled A-band found. Will convert it to O-band. Image:", lastPanelWithImage[0].style.backgroundImage)
 
-    // turn A-panel into O-panel
-    last.setAttribute('rule', 'O')
-    last.querySelector('.sub.leaf').remove() // nuke it
+      const imageOrd = getImageOrdFromURL(lastPanelWithImage[0].style.backgroundImage)
+      const imageRatio = imgObjs.filter(it => it.ord == imageOrd)[0].ratio
 
-    // clamp the max height to be INTERNAL_WIDTH
+      // turn A-panel into O-panel
+      last.setAttribute('rule', 'O')
+      last.querySelector('.sub.leaf').remove() // nuke it
 
-    // set appropriate width using the imageratio
+      // clamp the max height to be INTERNAL_WIDTH
+
+      // set appropriate width using the imageratio
+    }
   }
 
   return ret
@@ -1206,7 +1215,15 @@ function precalculateDim(imgObjs) {
 }
 
 function getImageOrdFromURL(cssURL) {
-  (cssURL.match(/(\d+)\.webp/)[1])|0
+  return (cssURL.match(/(\d+)\.webp/)[1])|0
+}
+
+function unlockNSFW() {
+  document.documentElement.style.setProperty('--nsfw-blur-enabled', '0')
+}
+
+function lockNSFW() {
+  document.documentElement.style.setProperty('--nsfw-blur-enabled', '1')
 }
 
 function pack(elemID, prefix) {
