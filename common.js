@@ -112,7 +112,7 @@ function setColRow(elem, cols, rows) {
 }
 
 class PartitionedBand {
-  DEBUG = 1
+  DEBUG = 0
 
   prefix = ''
   mainPanel = document.createElement('bandpanel')
@@ -843,7 +843,7 @@ function renderGallery(elemID, prefix, images) {
     let main;
     if (lesser.length == 0 && important.length > 1) {
       // Sort remaining important images by aspect ratio (narrow first)
-      console.log("Ran out of lesser images, putting important images starting from narrowest")
+      if (this.DEBUG) console.log("Ran out of lesser images, putting important images starting from narrowest");
       important.sort((a, b) => a.ratio - b.ratio);
       main = important.shift();
     } else {
@@ -914,7 +914,7 @@ function renderGallery(elemID, prefix, images) {
     // Keep trying rules until we find one that works or run out of rules
     while (!ruleFound && ruleSet.length > 0) {
       rule = ruleSet.pop()
-      console.log(`Band #${bandCount}, trying rule ${rule}`)
+      if (this.DEBUG) console.log(`Band #${bandCount}, trying rule ${rule}`);
       let needed;
       switch (rule) {
         case 'O': needed = 0; break;
@@ -934,7 +934,7 @@ function renderGallery(elemID, prefix, images) {
 
       // Skip this rule if we don't have enough lesser images
       if (needed > lesser.length) {
-        console.log(`Skipping rule ${rule}: needs ${needed} images but only have ${lesser.length} lesser images`);
+        if (this.DEBUG) console.log(`Skipping rule ${rule}: needs ${needed} images but only have ${lesser.length} lesser images`);
         continue;
       }
 
@@ -1047,11 +1047,11 @@ function renderGallery(elemID, prefix, images) {
     }
   }
 
-  if (this.DEBUG) {
+  //if (this.DEBUG) {
     if (lesser.length > 0) {
-      console.log(`Too much lesser images:`, lesser)
+      throw Error(`Too much lesser images:`, lesser)
     }
-  }
+  //}
 }
 
 function swapPenultAwithLastO(gallery, bands) {
@@ -1078,7 +1078,7 @@ function swapPenultAwithLastO(gallery, bands) {
       last.after(penult)
       ret = true
 
-      console.log("Swapping A-O to O-A:", penult, last)
+      // console.log("Swapping A-O to O-A:", penult, last)
     }
   }
   return ret
@@ -1108,7 +1108,7 @@ function mergeTwoUnderfilledAs(gallery, bands, imgObjs) {
       let penultMainPanel = penult.querySelector(".main.leaf")
       let penultEmptyPanel = penult.querySelector(".sub.leaf")
       if (lastPicturePanel !== null && penultEmptyPanel !== null) {
-        console.log("Merging two images into one band:", penultMainPanel.style.backgroundImage, lastPicturePanel.style.backgroundImage)
+        // console.log("Merging two images into one band:", penultMainPanel.style.backgroundImage, lastPicturePanel.style.backgroundImage)
 
         // copy image of the last to the empty panel of the penult
         penultEmptyPanel.style.backgroundImage = lastPicturePanel.style.backgroundImage
@@ -1148,7 +1148,7 @@ function putUnderfilledAtoLast(gallery, bands) {
 
     underfilled.forEach(it => {
       ret = true
-      console.log("Moving underfilled band to the last:", it)
+      // console.log("Moving underfilled band to the last:", it)
       gallery.appendChild(it) // apparently it will only move if the element already exists in the DOM
     })
   }
@@ -1170,7 +1170,7 @@ function turnTrailingAintoO(gallery, bands, imgObjs) {
 
     // of course, only do it when there is no image on the other side
     if (lastPanelWithImage.length == 1) {
-      console.log("Underfilled A-band found. Will convert it to O-band. Image:", lastPanelWithImage[0].style.backgroundImage)
+      // console.log("Underfilled A-band found. Will convert it to O-band. Image:", lastPanelWithImage[0].style.backgroundImage, "; band:", last)
 
       const imageOrd = getImageOrdFromURL(lastPanelWithImage[0].style.backgroundImage)
       const imageRatio = imgObjs.filter(it => it.ord == imageOrd)[0].ratio
@@ -1178,10 +1178,6 @@ function turnTrailingAintoO(gallery, bands, imgObjs) {
       // turn A-panel into O-panel
       last.setAttribute('rule', 'O')
       last.querySelector('.sub.leaf').remove() // nuke it
-
-      // clamp the max height to be INTERNAL_WIDTH
-
-      // set appropriate width using the imageratio
     }
   }
 
