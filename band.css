@@ -70,18 +70,3 @@ bandpanel[nsfw="1"]::before {
   transition: all 0.1s ease;
 }
 
-@media(max-width: 767px) {
-  band {
-    flex-direction: column;
-
-    height: 1200px; /* temporary. should be dynamic */
-  }
-  bandpanel.main {
-    width: 100%;
-    height: 50%;
-  }
-  bandpanel.sub {
-    width: 100%;
-    height: 50%;
-  }
-}

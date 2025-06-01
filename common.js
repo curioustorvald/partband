@@ -1049,9 +1049,9 @@ function renderGallery(elemID, prefix, images, columns) {
   const important = shuffled.filter(img => (img.epic|0) >= 10);
   let lesser = shuffled.filter(img => (img.epic|0) < 10);
 
-  let vert = mustBeVertical(COLUMNS, BAND_COUNT)
 
   while (important.length > 0) {
+    let vert = mustBeVertical(COLUMNS, BAND_COUNT)
     let fillers = []
     let rule = ''
 
@@ -1113,7 +1113,10 @@ function renderGallery(elemID, prefix, images, columns) {
       if (hasEnoughFillers) {
         // Normal case: try all rules
         //// temporarily disabling rule E1 and E2
-        ruleSet = shuffle(['A', 'B', /*'D', 'E1', 'E2',*/ 'F1', 'F2', 'G', 'I']);
+        if (vert)
+          ruleSet = shuffle(['A', /*'D', 'E1', 'E2',*/ 'F1', 'F2', 'G']);
+        else
+          ruleSet = shuffle(['A', 'B', /*'D', 'E1', 'E2',*/ 'F1', 'F2', 'G', 'I']);
 
         // append E1 and E2 at the last
         if (Math.random() >= 0.5) {
@@ -1416,6 +1419,15 @@ function turnTrailingAintoO(gallery, bands, imgObjs) {
   return ret
 }
 
+function nukeUnderfilledPanel(gallery, bands, imgObjs) {
+  // search for bandpanel without images
+  // nuke it
+  // take its older sibling, then set its width/height to 100% (whichever is actually defined)
+
+  let noImgPanels = Array.from(document.getElementsByTagName('bandpanel')).filter(it => it.className.endsWith('leaf') && it.style.backgroundImage.length < 1)
+  TODO()
+}
+
 function postProcessGallery(elemID, prefix, imgObjs, columns) {
   // if the last band is type 'O' and the penultimate band is underfilled (type != 'O' and has only one child), swap them
 
@@ -1428,6 +1440,7 @@ function postProcessGallery(elemID, prefix, imgObjs, columns) {
       mergeTwoUnderfilledAs(gallery, bands, imgObjs),
       swapPenultAwithLastO(gallery, bands, imgObjs)
     ] : [
+      nukeUnderfilledPanel(gallery, bands, imgObjs)
       // putUnderfilledAtoLast(gallery, bands, imgObjs),
       // mergeTwoUnderfilledAs(gallery, bands, imgObjs),
       // swapPenultAwithLastO(gallery, bands, imgObjs)
