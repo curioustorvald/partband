@@ -25,6 +25,7 @@ band {
 }
 band[dir="v"] {
   grid-row: span 2;
+  flex-direction: column;
   height: 800px; /* temporary. should be dynamic */
 }
 .panel {

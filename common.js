@@ -78,17 +78,6 @@ function aspectRatio(image) {
   return image.width / image.height;
 }
 
-function selectRuleSet(image) {
-  const imageAspectRatio = image.ratio // larger = wider
-
-  // wide
-  if (imageAspectRatio > 1.4) return ['A', 'B']
-  // standard
-  else if (0.77 <= imageAspectRatio && imageAspectRatio <= 1.4) return ['C', 'D']
-  // narrow
-  else return ['E1', 'E2', 'F1', 'F2', 'G', 'H', 'I', 'D']
-}
-
 function computeBandHeight(images, rule, containerWidth) {
   const mainImage = images[0];
   let mainCols = 2, mainRows = 1;
@@ -111,14 +100,47 @@ function setColRow(elem, cols, rows) {
   elem.style.gridTemplateRows = '1fr '.repeat(rows).trim()
 }
 
-class PartitionedBand {
-  DEBUG = 0
+function mustBeVertical(p, x) {
+  // Handle edge cases
+  if (x < 0) return false;
+  if (p % 2 === 0) return false;
 
+  // Special case for p = 1: all non-negative integers
+  if (p === 1) return x >= 0;
+
+  // For other values of p, check if x fits the arithmetic sequence
+  // Starting value: (p-1)/2, increment: p
+  const start = (p - 1) / 2;
+
+  // Check if x can be expressed as start + n*p where n >= 0
+  if (x < start) return false;
+
+  const diff = x - start;
+  return diff % p === 0;
+}
+
+function mustBeFlipped(p, x) {
+  const base = Math.ceil(p / 2)
+  const maxIncrement = Math.floor(p / 2)
+
+  for (let increment = 0; increment < maxIncrement; increment++) {
+      const start = base + increment;
+      if ((x - start) >= 0 && (x - start) % p === 0) {
+          return true
+      }
+  }
+
+  return false
+}
+
+class PartitionedBand {
+  DEBUG = 1
+
+  ord = undefined
   prefix = ''
   mainPanel = document.createElement('bandpanel')
   subPanel = document.createElement('bandpanel')
   #images = []
-  flipped = false
   picturePanels = []
   panelLetters = []
 
@@ -133,8 +155,6 @@ class PartitionedBand {
   mainPanelWidth = 0 // pixels
   height = 0 // pixels
   #isThreeCol = false
-
-  isVertical = false
 
   rule = ''
 
@@ -253,14 +273,26 @@ class PartitionedBand {
         break;
 
       case 'B': case 'C': case 'H':
-        // Vertical split in sub-panel (B above C)
-        if (this.resizeFactors['B-C']) {
-          const ratio = this.resizeFactors['B-C'];
-          this.subPanelHeightPerc.B = ratio;
-          this.subPanelHeightPerc.C = 1 - ratio;
+        if (!this.isVertical()) {
+          // Vertical split in sub-panel (B above C)
+          if (this.resizeFactors['B-C']) {
+            const ratio = this.resizeFactors['B-C'];
+            this.subPanelHeightPerc.B = ratio;
+            this.subPanelHeightPerc.C = 1 - ratio;
+          }
+          this.subPanelWidthPerc.B = baseSubWidth;
+          this.subPanelWidthPerc.C = baseSubWidth;
         }
-        this.subPanelWidthPerc.B = baseSubWidth;
-        this.subPanelWidthPerc.C = baseSubWidth;
+        else {
+          // Vertical split in sub-panel (B above C)
+          if (this.resizeFactors['B-C']) {
+            const ratio = this.resizeFactors['B-C'];
+            this.subPanelWidthPerc.B = ratio;
+            this.subPanelWidthPerc.C = 1 - ratio;
+          }
+          this.subPanelHeightPerc.B = baseSubWidth;
+          this.subPanelHeightPerc.C = baseSubWidth;
+        }
         break;
 
       case 'D':
@@ -282,12 +314,22 @@ class PartitionedBand {
           heightD = (1 - ratioBc) * (2/3) * (1 - ratioCd) + (1/3);
         }
 
-        this.subPanelHeightPerc.B = heightB;
-        this.subPanelHeightPerc.C = heightC;
-        this.subPanelHeightPerc.D = heightD;
-        this.subPanelWidthPerc.B = baseSubWidth;
-        this.subPanelWidthPerc.C = baseSubWidth;
-        this.subPanelWidthPerc.D = baseSubWidth;
+        if (!this.isVertical()) {
+          this.subPanelHeightPerc.B = heightB;
+          this.subPanelHeightPerc.C = heightC;
+          this.subPanelHeightPerc.D = heightD;
+          this.subPanelWidthPerc.B = baseSubWidth;
+          this.subPanelWidthPerc.C = baseSubWidth;
+          this.subPanelWidthPerc.D = baseSubWidth;
+        }
+        else {
+          this.subPanelWidthPerc.B = heightB;
+          this.subPanelWidthPerc.C = heightC;
+          this.subPanelWidthPerc.D = heightD;
+          this.subPanelHeightPerc.B = baseSubWidth;
+          this.subPanelHeightPerc.C = baseSubWidth;
+          this.subPanelHeightPerc.D = baseSubWidth;
+        }
         break;
 
       case 'E1':
@@ -296,21 +338,41 @@ class PartitionedBand {
         leftColWidth = baseSubWidth * colRatio;
         rightColWidth = baseSubWidth * (1 - colRatio);
 
-        this.subPanelWidthPerc.B = leftColWidth;
-        this.subPanelWidthPerc.D = leftColWidth;
-        this.subPanelWidthPerc.C = rightColWidth;
-        this.subPanelWidthPerc.E = rightColWidth;
+        if (!this.isVertical()) {
+          this.subPanelWidthPerc.B = leftColWidth;
+          this.subPanelWidthPerc.D = leftColWidth;
+          this.subPanelWidthPerc.C = rightColWidth;
+          this.subPanelWidthPerc.E = rightColWidth;
 
-        // Handle vertical ratios within each column
-        if (this.resizeFactors['B-D']) {
-          const bdRatio = this.resizeFactors['B-D'];
-          this.subPanelHeightPerc.B = bdRatio;
-          this.subPanelHeightPerc.D = 1 - bdRatio;
+          // Handle vertical ratios within each column
+          if (this.resizeFactors['B-D']) {
+            const bdRatio = this.resizeFactors['B-D'];
+            this.subPanelHeightPerc.B = bdRatio;
+            this.subPanelHeightPerc.D = 1 - bdRatio;
+          }
+          if (this.resizeFactors['C-E']) {
+            const ceRatio = this.resizeFactors['C-E'];
+            this.subPanelHeightPerc.C = ceRatio;
+            this.subPanelHeightPerc.E = 1 - ceRatio;
+          }
         }
-        if (this.resizeFactors['C-E']) {
-          const ceRatio = this.resizeFactors['C-E'];
-          this.subPanelHeightPerc.C = ceRatio;
-          this.subPanelHeightPerc.E = 1 - ceRatio;
+        else {
+          this.subPanelHeightPerc.B = leftColWidth;
+          this.subPanelHeightPerc.D = leftColWidth;
+          this.subPanelHeightPerc.C = rightColWidth;
+          this.subPanelHeightPerc.E = rightColWidth;
+
+          // Handle vertical ratios within each column
+          if (this.resizeFactors['B-D']) {
+            const bdRatio = this.resizeFactors['B-D'];
+            this.subPanelWidthPerc.B = bdRatio;
+            this.subPanelWidthPerc.D = 1 - bdRatio;
+          }
+          if (this.resizeFactors['C-E']) {
+            const ceRatio = this.resizeFactors['C-E'];
+            this.subPanelWidthPerc.C = ceRatio;
+            this.subPanelWidthPerc.E = 1 - ceRatio;
+          }
         }
         break;
 
@@ -320,51 +382,101 @@ class PartitionedBand {
         topRowHeight = rowRatio;
         bottomRowHeight = 1 - rowRatio;
 
-        this.subPanelHeightPerc.B = topRowHeight;
-        this.subPanelHeightPerc.C = topRowHeight;
-        this.subPanelHeightPerc.D = bottomRowHeight;
-        this.subPanelHeightPerc.E = bottomRowHeight;
+        if (!this.isVertical()) {
+          this.subPanelHeightPerc.B = topRowHeight;
+          this.subPanelHeightPerc.C = topRowHeight;
+          this.subPanelHeightPerc.D = bottomRowHeight;
+          this.subPanelHeightPerc.E = bottomRowHeight;
 
-        // Handle horizontal ratios within each row
-        if (this.resizeFactors['B-C']) {
-          const bcRatio = this.resizeFactors['B-C'];
-          this.subPanelWidthPerc.B = baseSubWidth * bcRatio;
-          this.subPanelWidthPerc.C = baseSubWidth * (1 - bcRatio);
+          // Handle horizontal ratios within each row
+          if (this.resizeFactors['B-C']) {
+            const bcRatio = this.resizeFactors['B-C'];
+            this.subPanelWidthPerc.B = baseSubWidth * bcRatio;
+            this.subPanelWidthPerc.C = baseSubWidth * (1 - bcRatio);
+          }
+          if (this.resizeFactors['D-E']) {
+            const deRatio = this.resizeFactors['D-E'];
+            this.subPanelWidthPerc.D = baseSubWidth * deRatio;
+            this.subPanelWidthPerc.E = baseSubWidth * (1 - deRatio);
+          }
         }
-        if (this.resizeFactors['D-E']) {
-          const deRatio = this.resizeFactors['D-E'];
-          this.subPanelWidthPerc.D = baseSubWidth * deRatio;
-          this.subPanelWidthPerc.E = baseSubWidth * (1 - deRatio);
+        else {
+          this.subPanelWidthPerc.B = topRowHeight;
+          this.subPanelWidthPerc.C = topRowHeight;
+          this.subPanelWidthPerc.D = bottomRowHeight;
+          this.subPanelWidthPerc.E = bottomRowHeight;
+
+          // Handle horizontal ratios within each row
+          if (this.resizeFactors['B-C']) {
+            const bcRatio = this.resizeFactors['B-C'];
+            this.subPanelHeightPerc.B = baseSubWidth * bcRatio;
+            this.subPanelHeightPerc.C = baseSubWidth * (1 - bcRatio);
+          }
+          if (this.resizeFactors['D-E']) {
+            const deRatio = this.resizeFactors['D-E'];
+            this.subPanelHeightPerc.D = baseSubWidth * deRatio;
+            this.subPanelHeightPerc.E = baseSubWidth * (1 - deRatio);
+          }
         }
         break;
 
       case 'F1':
         // B on top, C and D side by side on bottom
         const f1RowRatio = this.resizeFactors['B-CD'] || 0.5;
-        this.subPanelHeightPerc.B = f1RowRatio;
-        this.subPanelHeightPerc.C = 1 - f1RowRatio;
-        this.subPanelHeightPerc.D = 1 - f1RowRatio;
-        this.subPanelWidthPerc.B = baseSubWidth;
 
-        if (this.resizeFactors['C-D']) {
-          const cdRatio = this.resizeFactors['C-D'];
-          this.subPanelWidthPerc.C = baseSubWidth * cdRatio;
-          this.subPanelWidthPerc.D = baseSubWidth * (1 - cdRatio);
+        if (!this.isVertical()) {
+          this.subPanelHeightPerc.B = f1RowRatio;
+          this.subPanelHeightPerc.C = 1 - f1RowRatio;
+          this.subPanelHeightPerc.D = 1 - f1RowRatio;
+          this.subPanelWidthPerc.B = baseSubWidth;
+
+          if (this.resizeFactors['C-D']) {
+            const cdRatio = this.resizeFactors['C-D'];
+            this.subPanelWidthPerc.C = baseSubWidth * cdRatio;
+            this.subPanelWidthPerc.D = baseSubWidth * (1 - cdRatio);
+          }
+        }
+        else {
+          this.subPanelWidthPerc.B = f1RowRatio;
+          this.subPanelWidthPerc.C = 1 - f1RowRatio;
+          this.subPanelWidthPerc.D = 1 - f1RowRatio;
+          this.subPanelHeightPerc.B = baseSubWidth;
+
+          if (this.resizeFactors['C-D']) {
+            const cdRatio = this.resizeFactors['C-D'];
+            this.subPanelHeightPerc.C = baseSubWidth * cdRatio;
+            this.subPanelHeightPerc.D = baseSubWidth * (1 - cdRatio);
+          }
         }
         break;
 
       case 'F2':
         // B and C side by side on top, D on bottom
         const f2RowRatio = this.resizeFactors['BC-D'] || 0.5;
-        this.subPanelHeightPerc.B = f2RowRatio;
-        this.subPanelHeightPerc.C = f2RowRatio;
-        this.subPanelHeightPerc.D = 1 - f2RowRatio;
-        this.subPanelWidthPerc.D = baseSubWidth;
 
-        if (this.resizeFactors['B-C']) {
-          const bcRatio = this.resizeFactors['B-C'];
-          this.subPanelWidthPerc.B = baseSubWidth * bcRatio;
-          this.subPanelWidthPerc.C = baseSubWidth * (1 - bcRatio);
+        if (!this.isVertical()) {
+          this.subPanelHeightPerc.B = f2RowRatio;
+          this.subPanelHeightPerc.C = f2RowRatio;
+          this.subPanelHeightPerc.D = 1 - f2RowRatio;
+          this.subPanelWidthPerc.D = baseSubWidth;
+
+          if (this.resizeFactors['B-C']) {
+            const bcRatio = this.resizeFactors['B-C'];
+            this.subPanelWidthPerc.B = baseSubWidth * bcRatio;
+            this.subPanelWidthPerc.C = baseSubWidth * (1 - bcRatio);
+          }
+        }
+        else {
+          this.subPanelWidthPerc.B = f2RowRatio;
+          this.subPanelWidthPerc.C = f2RowRatio;
+          this.subPanelWidthPerc.D = 1 - f2RowRatio;
+          this.subPanelHeightPerc.D = baseSubWidth;
+
+          if (this.resizeFactors['B-C']) {
+            const bcRatio = this.resizeFactors['B-C'];
+            this.subPanelHeightPerc.B = baseSubWidth * bcRatio;
+            this.subPanelHeightPerc.C = baseSubWidth * (1 - bcRatio);
+          }
         }
         break;
 
@@ -374,27 +486,52 @@ class PartitionedBand {
         leftColWidth = baseSubWidth * gColRatio;
         rightColWidth = baseSubWidth * (1 - gColRatio);
 
-        this.subPanelWidthPerc.B = leftColWidth;
-        this.subPanelWidthPerc.D = leftColWidth;
-        this.subPanelWidthPerc.C = rightColWidth;
-        this.subPanelHeightPerc.C = 1.0;
+        if (!this.isVertical()) {
+          this.subPanelWidthPerc.B = leftColWidth;
+          this.subPanelWidthPerc.D = leftColWidth;
+          this.subPanelWidthPerc.C = rightColWidth;
+          this.subPanelHeightPerc.C = 1.0;
 
-        if (this.resizeFactors['B-D']) {
-          const bdRatio = this.resizeFactors['B-D'];
-          this.subPanelHeightPerc.B = bdRatio;
-          this.subPanelHeightPerc.D = 1 - bdRatio;
+          if (this.resizeFactors['B-D']) {
+            const bdRatio = this.resizeFactors['B-D'];
+            this.subPanelHeightPerc.B = bdRatio;
+            this.subPanelHeightPerc.D = 1 - bdRatio;
+          }
+        }
+        else {
+          this.subPanelHeightPerc.B = leftColWidth;
+          this.subPanelHeightPerc.D = leftColWidth;
+          this.subPanelHeightPerc.C = rightColWidth;
+          this.subPanelWidthPerc.C = 1.0;
+
+          if (this.resizeFactors['B-D']) {
+            const bdRatio = this.resizeFactors['B-D'];
+            this.subPanelWidthPerc.B = bdRatio;
+            this.subPanelWidthPerc.D = 1 - bdRatio;
+          }
         }
         break;
 
       case 'I':
         // Two horizontal panels
-        if (this.resizeFactors['B-C']) {
-          const ratio = this.resizeFactors['B-C'];
-          this.subPanelWidthPerc.B = baseSubWidth * ratio;
-          this.subPanelWidthPerc.C = baseSubWidth * (1 - ratio);
+        if (!this.isVertical()) {
+          if (this.resizeFactors['B-C']) {
+            const ratio = this.resizeFactors['B-C'];
+            this.subPanelWidthPerc.B = baseSubWidth * ratio;
+            this.subPanelWidthPerc.C = baseSubWidth * (1 - ratio);
+          }
+          this.subPanelHeightPerc.B = 1.0;
+          this.subPanelHeightPerc.C = 1.0;
         }
-        this.subPanelHeightPerc.B = 1.0;
-        this.subPanelHeightPerc.C = 1.0;
+        else {
+          if (this.resizeFactors['B-C']) {
+            const ratio = this.resizeFactors['B-C'];
+            this.subPanelHeightPerc.B = baseSubWidth * ratio;
+            this.subPanelHeightPerc.C = baseSubWidth * (1 - ratio);
+          }
+          this.subPanelWidthPerc.B = 1.0;
+          this.subPanelWidthPerc.C = 1.0;
+        }
         break;
     }
   }
@@ -404,9 +541,13 @@ class PartitionedBand {
     this.panelLetters.push(letter)
   }
 
-  constructor(prefix, rule, flip, vertical) {
+  isVertical() {
+    return mustBeVertical(COLUMNS, this.ord)
+  }
+
+  constructor(prefix, rule, ord) {
+    this.ord = ord
     this.prefix = prefix
-    this.isVertical = vertical
     setColRow(this.mainPanel, 1, 1)
     this.mainPanel.className = 'main leaf'
     this.mainPanel.setAttribute('panel', 'A')
@@ -415,7 +556,6 @@ class PartitionedBand {
     this.picturePanels.push(this.mainPanel) // index 0
     this.panelLetters.push('A')
     this.resizeHandles['A-B'] = this.#createResizeHandle(this.mainPanel, this.subPanel)
-    this.flipped = flip
     this.rule = rule
 
     let panelB, panelC, panelD, panelE, panelBD, panelCD, panelCE, panelBC, panelDE;
@@ -544,7 +684,7 @@ class PartitionedBand {
         panelBD = this.#createIntermediatePanel(); setColRow(panelBD, 1, 2)
         setColRow(this.subPanel, 2, 1)
         panelBD.appendChild(panelB);panelBD.appendChild(panelD)
-        if (this.flipped) {
+        if (mustBeFlipped(COLUMNS, this.ord)) {
           this.subPanel.appendChild(panelC)
           this.subPanel.appendChild(panelBD)
         }
@@ -572,28 +712,56 @@ class PartitionedBand {
         break;
     }
 
-    // fill in subPanelHeightPerc
-    switch (this.rule) {
-      case 'A': case 'I':
-        this.subPanelHeightPerc.B = 1.0
-        this.subPanelHeightPerc.C = 1.0
-        break;
-      case 'B': case 'C': case 'E1': case 'E2': case 'F1': case 'F2': case 'H':
-        this.subPanelHeightPerc.B = 0.5
-        this.subPanelHeightPerc.C = 0.5
-        this.subPanelHeightPerc.D = 0.5
-        this.subPanelHeightPerc.E = 0.5
-        break;
-      case 'D':
-        this.subPanelHeightPerc.B = 1.0 / 3.0
-        this.subPanelHeightPerc.C = 1.0 / 3.0
-        this.subPanelHeightPerc.D = 1.0 / 3.0
-        break;
-      case 'G':
-        this.subPanelHeightPerc.B = 0.5
-        this.subPanelHeightPerc.C = 1.0
-        this.subPanelHeightPerc.D = 0.5
-        break;
+    if (!this.isVertical()) {
+      // fill in subPanelHeightPerc if horizontal
+      switch (this.rule) {
+        case 'A': case 'I':
+          this.subPanelHeightPerc.B = 1.0
+          this.subPanelHeightPerc.C = 1.0
+          break;
+        case 'B': case 'C': case 'E1': case 'E2': case 'F1': case 'F2': case 'H':
+          this.subPanelHeightPerc.B = 0.5
+          this.subPanelHeightPerc.C = 0.5
+          this.subPanelHeightPerc.D = 0.5
+          this.subPanelHeightPerc.E = 0.5
+          break;
+        case 'D':
+          this.subPanelHeightPerc.B = 1.0 / 3.0
+          this.subPanelHeightPerc.C = 1.0 / 3.0
+          this.subPanelHeightPerc.D = 1.0 / 3.0
+          break;
+        case 'G':
+          this.subPanelHeightPerc.B = 0.5
+          this.subPanelHeightPerc.C = 1.0
+          this.subPanelHeightPerc.D = 0.5
+          break;
+      }
+    }
+    else {
+      // fill in subPanelWidthPerc if vertical
+      switch (this.rule) {
+        case 'A': case 'B': case 'C': case 'D': case 'H':
+          this.subPanelWidthPerc.B = INT_WIDTH_VERT
+          this.subPanelWidthPerc.C = this.subPanelWidthPerc.B
+          this.subPanelWidthPerc.D = this.subPanelWidthPerc.B
+          break;
+        case 'E1': case 'E2': case 'G': case 'I':
+          this.subPanelWidthPerc.B = INT_WIDTH_VERT / 2
+          this.subPanelWidthPerc.C = this.subPanelWidthPerc.B
+          this.subPanelWidthPerc.D = this.subPanelWidthPerc.B
+          this.subPanelWidthPerc.E = this.subPanelWidthPerc.B
+          break;
+        case 'F1':
+          this.subPanelWidthPerc.B = INT_WIDTH_VERT
+          this.subPanelWidthPerc.C = this.subPanelWidthPerc.B / 2
+          this.subPanelWidthPerc.D = this.subPanelWidthPerc.B / 2
+          break;
+        case 'F2':
+          this.subPanelWidthPerc.D = INT_WIDTH_VERT
+          this.subPanelWidthPerc.B = this.subPanelWidthPerc.D / 2
+          this.subPanelWidthPerc.C = this.subPanelWidthPerc.D / 2
+          break;
+      }
     }
 
   }
@@ -649,7 +817,10 @@ class PartitionedBand {
   }
 
   adjustForEvenFit() {
-    if ('O' == this.rule) return;
+    if ('O' == this.rule) {
+      this.#updateStoredPanelDimensions()
+      return
+    }
     // Implementation for optimizing panel ratios to minimize RMS error
     // This uses a simple hill-climbing approach to adjust resize handles
 
@@ -718,33 +889,67 @@ class PartitionedBand {
     else {
       this.height = Math.round(this.#heightfun(mainImageRatio))|0
     }
+
     let widthPx = ('O' == this.rule) ? INTERNAL_WIDTH : this.height * mainImageRatio
     this.mainPanelWidth = widthPx
-    this.mainPanelWidthPerc = widthPx / INTERNAL_WIDTH * 100
 
-    // fill in subPanelWidthPerc
-    switch (this.rule) {
-      case 'A': case 'B': case 'C': case 'D': case 'H':
-        this.subPanelWidthPerc.B = 1.0 - (widthPx / INTERNAL_WIDTH)
-        this.subPanelWidthPerc.C = this.subPanelWidthPerc.B
-        this.subPanelWidthPerc.D = this.subPanelWidthPerc.B
-        break;
-      case 'E1': case 'E2': case 'G': case 'I':
-        this.subPanelWidthPerc.B = (1.0 - (widthPx / INTERNAL_WIDTH)) / 2
-        this.subPanelWidthPerc.C = this.subPanelWidthPerc.B
-        this.subPanelWidthPerc.D = this.subPanelWidthPerc.B
-        this.subPanelWidthPerc.E = this.subPanelWidthPerc.B
-        break;
-      case 'F1':
-        this.subPanelWidthPerc.B = 1.0 - (widthPx / INTERNAL_WIDTH)
-        this.subPanelWidthPerc.C = this.subPanelWidthPerc.B / 2
-        this.subPanelWidthPerc.D = this.subPanelWidthPerc.B / 2
-        break;
-      case 'F2':
-        this.subPanelWidthPerc.D = 1.0 - (widthPx / INTERNAL_WIDTH)
-        this.subPanelWidthPerc.B = this.subPanelWidthPerc.D / 2
-        this.subPanelWidthPerc.C = this.subPanelWidthPerc.D / 2
-        break;
+    if (!this.isVertical()) {
+      // set main panel width
+      this.mainPanelWidthPerc = widthPx / INTERNAL_WIDTH * 100
+
+      // fill in subPanelWidthPerc if horizontal
+      switch (this.rule) {
+        case 'A': case 'B': case 'C': case 'D': case 'H':
+          this.subPanelWidthPerc.B = 1.0 - (widthPx / INTERNAL_WIDTH)
+          this.subPanelWidthPerc.C = this.subPanelWidthPerc.B
+          this.subPanelWidthPerc.D = this.subPanelWidthPerc.B
+          break;
+        case 'E1': case 'E2': case 'G': case 'I':
+          this.subPanelWidthPerc.B = (1.0 - (widthPx / INTERNAL_WIDTH)) / 2
+          this.subPanelWidthPerc.C = this.subPanelWidthPerc.B
+          this.subPanelWidthPerc.D = this.subPanelWidthPerc.B
+          this.subPanelWidthPerc.E = this.subPanelWidthPerc.B
+          break;
+        case 'F1':
+          this.subPanelWidthPerc.B = 1.0 - (widthPx / INTERNAL_WIDTH)
+          this.subPanelWidthPerc.C = this.subPanelWidthPerc.B / 2
+          this.subPanelWidthPerc.D = this.subPanelWidthPerc.B / 2
+          break;
+        case 'F2':
+          this.subPanelWidthPerc.D = 1.0 - (widthPx / INTERNAL_WIDTH)
+          this.subPanelWidthPerc.B = this.subPanelWidthPerc.D / 2
+          this.subPanelWidthPerc.C = this.subPanelWidthPerc.D / 2
+          break;
+      }
+    }
+    else {
+      // set main panel height
+      let heightPx = ('O' == this.rule) ? INTERNAL_WIDTH : INT_WIDTH_VERT / mainImageRatio
+      this.mainPanelWidthPerc = heightPx / INTERNAL_WIDTH * 100 // using mainPanelWidthPerc as a height percentage
+
+      // fill in subPanelHeightPerc if vertical
+      switch (this.rule) {
+        case 'A': case 'I':
+          this.subPanelHeightPerc.B = 1.0 - (heightPx / INTERNAL_WIDTH)
+          this.subPanelHeightPerc.C = this.subPanelHeightPerc.B
+          break;
+        case 'B': case 'C': case 'E1': case 'E2': case 'F1': case 'F2': case 'H':
+          this.subPanelHeightPerc.B = 1.0 - (heightPx / INTERNAL_WIDTH) / 2
+          this.subPanelHeightPerc.C = this.subPanelHeightPerc.B
+          this.subPanelHeightPerc.D = this.subPanelHeightPerc.B
+          this.subPanelHeightPerc.E = this.subPanelHeightPerc.B
+          break;
+        case 'D':
+          this.subPanelHeightPerc.B = 1.0 - (heightPx / INTERNAL_WIDTH) / 3
+          this.subPanelHeightPerc.C = this.subPanelHeightPerc.B
+          this.subPanelHeightPerc.D = this.subPanelHeightPerc.B
+          break;
+        case 'G':
+          this.subPanelHeightPerc.B = 1.0 - (heightPx / INTERNAL_WIDTH) / 2
+          this.subPanelHeightPerc.C = this.subPanelHeightPerc.B * 2
+          this.subPanelHeightPerc.D = this.subPanelHeightPerc.B
+          break;
+      }
     }
 
     // Apply current resize ratios to the calculated dimensions
@@ -753,20 +958,29 @@ class PartitionedBand {
 
   makeHTMLelement(debuginfo) {
     const container = document.createElement('band');
-    container.setAttribute('dir', (this.isVertical) ? 'v' : 'h')
+
+    container.setAttribute('dir', (mustBeVertical(COLUMNS, this.ord)) ? 'v' : 'h')
+
+
     if (this.DEBUG && debuginfo !== undefined) {
       for (const [k, v] of Object.entries(debuginfo)) {
         container.setAttribute(`D${k}`, v)
       }
     }
+    if (this.ord !== undefined) {
+      container.setAttribute('ord', this.ord)
+    }
     if ('O' == this.rule) {
       container.appendChild(this.mainPanel)
       container.style.height = `${this.height}px`
       container.setAttribute('rule', this.rule) // this is not a debug symbol
-      this.mainPanel.style.width = `100%`
+      if (this.isVertical())
+        this.mainPanel.style.height = `100%`;
+      else
+        this.mainPanel.style.width = `100%`;
     }
     else {
-      if (!this.flipped) {
+      if (!mustBeFlipped(COLUMNS, this.ord)) {
         container.appendChild(this.mainPanel)
         container.appendChild(this.subPanel)
       }
@@ -774,10 +988,21 @@ class PartitionedBand {
         container.appendChild(this.subPanel)
         container.appendChild(this.mainPanel)
       }
-      container.style.height = `${this.height}px`
       container.setAttribute('rule', this.rule) // this is not a debug symbol
-      this.mainPanel.style.width = `${this.mainPanelWidthPerc}%`
-      this.subPanel.style.width = `${100 - this.mainPanelWidthPerc}%`
+
+      if (!this.isVertical()) {
+        container.style.height = `${this.height}px`
+        this.mainPanel.style.width = `${this.mainPanelWidthPerc}%`
+        this.subPanel.style.width = `${100 - this.mainPanelWidthPerc}%`
+
+        // console.log("H", this.ord, this.rule, this.mainPanel, this.subPanel)
+      }
+      else {
+        this.mainPanel.style.height = `${this.mainPanelWidthPerc}%`
+        this.subPanel.style.height = `${100 - this.mainPanelWidthPerc}%`
+
+        // console.log("V", this.ord, this.rule, this.mainPanel, this.subPanel)
+      }
     }
 
     return container
@@ -785,19 +1010,9 @@ class PartitionedBand {
 
 }
 
-function panel(image, col, row, flip) {
-  const div = document.createElement('div');
-  div.className = 'panel';
-  div.style.gridColumn = flip ? (4 - col) : col;
-  div.style.gridRow = row;
-  div.style.backgroundImage = `url(${image.src})`;
-  return div;
-}
-
-let bandCount = 0
 function makeBandClass(prefix, rule, columns) {
-  const flip = bandCount % (2 * columns) >= columns
-  const bandClass = new PartitionedBand(prefix, rule, flip)
+  const vertical = mustBeVertical(columns, BAND_COUNT)
+  const bandClass = new PartitionedBand(prefix, rule, BAND_COUNT)
   return bandClass
 }
 
@@ -834,6 +1049,8 @@ function renderGallery(elemID, prefix, images, columns) {
   const important = shuffled.filter(img => (img.epic|0) >= 10);
   let lesser = shuffled.filter(img => (img.epic|0) < 10);
 
+  let vert = mustBeVertical(COLUMNS, BAND_COUNT)
+
   while (important.length > 0) {
     let fillers = []
     let rule = ''
@@ -859,14 +1076,28 @@ function renderGallery(elemID, prefix, images, columns) {
 
     let ruleSet;
     if (isHighlyEpic) {
-      if (main.ratio >= 1.5)
-        ruleSet = ['O'];
-      else if (main.ratio >= 1.3)
-        ruleSet = shuffle(['A', 'I']);
-      else if (main.ratio <= 0.75)
-        ruleSet = shuffle(['F1', 'F2', 'B', 'C']);
-      else
-        ruleSet = shuffle(['F1', 'F2', 'B', 'I']);
+      let checkRatio = (vert) ? (1.0 / main.ratio) : main.ratio
+
+      if (vert) {
+        if (checkRatio >= 1.5)
+          ruleSet = ['O'];
+        else if (checkRatio >= 1.3)
+          ruleSet = shuffle(['A', 'I']);
+        else if (checkRatio <= 0.75)
+          ruleSet = shuffle(['F1', 'F2']);
+        else
+          ruleSet = shuffle(['F1', 'F2', 'I']);
+      }
+      else {
+        if (checkRatio >= 1.5)
+          ruleSet = ['O'];
+        else if (checkRatio >= 1.3)
+          ruleSet = shuffle(['A', 'I']);
+        else if (checkRatio <= 0.75)
+          ruleSet = shuffle(['F1', 'F2', 'B', 'C']);
+        else
+          ruleSet = shuffle(['F1', 'F2', 'B', 'I']);
+      }
 
       // append E1 and E2 at the last, if the main image is squarish
       if (9/10 <= main.ratio && main.ratio <= 10/9) {
@@ -882,7 +1113,7 @@ function renderGallery(elemID, prefix, images, columns) {
       if (hasEnoughFillers) {
         // Normal case: try all rules
         //// temporarily disabling rule E1 and E2
-        ruleSet = shuffle(['A', 'B', 'D', /*'E1', 'E2',*/ 'F1', 'F2', 'G', 'I']);
+        ruleSet = shuffle(['A', 'B', /*'D', 'E1', 'E2',*/ 'F1', 'F2', 'G', 'I']);
 
         // append E1 and E2 at the last
         if (Math.random() >= 0.5) {
@@ -895,7 +1126,7 @@ function renderGallery(elemID, prefix, images, columns) {
       else {
         // Limited fillers: prioritize simpler rules, but allow some complex ones if we have enough
         if (lesser.length >= 3) {
-          ruleSet = shuffle(['A', 'B', 'D', 'F1', 'F2', 'G', 'I']);
+          ruleSet = shuffle(['A', 'B', /*'D'*/, 'F1', 'F2', 'G', 'I']);
         } else if (lesser.length >= 2) {
           ruleSet = shuffle(['A', 'B', 'I']);
         } else {
@@ -914,7 +1145,7 @@ function renderGallery(elemID, prefix, images, columns) {
     // Keep trying rules until we find one that works or run out of rules
     while (!ruleFound && ruleSet.length > 0) {
       rule = ruleSet.pop()
-      if (this.DEBUG) console.log(`Band #${bandCount}, trying rule ${rule}`);
+      if (this.DEBUG) console.log(`Band #${BAND_COUNT}, trying rule ${rule}`);
       let needed;
       switch (rule) {
         case 'O': needed = 0; break;
@@ -1033,8 +1264,8 @@ function renderGallery(elemID, prefix, images, columns) {
     }
 
     band.adjustForEvenFit()
-    gallery.appendChild(band.makeHTMLelement({"band-num": bandCount}))
-    bandCount++
+    gallery.appendChild(band.makeHTMLelement({"band-num": BAND_COUNT}))
+    BAND_COUNT++
 
 
     if (important.length == 0 && lesser.length > 0) {
@@ -1177,6 +1408,7 @@ function turnTrailingAintoO(gallery, bands, imgObjs) {
 
       // turn A-panel into O-panel
       last.setAttribute('rule', 'O')
+      last.querySelector('.main.leaf').style.width = '100%'
       last.querySelector('.sub.leaf').remove() // nuke it
     }
   }
@@ -1184,19 +1416,23 @@ function turnTrailingAintoO(gallery, bands, imgObjs) {
   return ret
 }
 
-function postProcessGallery(elemID, prefix, imgObjs) {
+function postProcessGallery(elemID, prefix, imgObjs, columns) {
   // if the last band is type 'O' and the penultimate band is underfilled (type != 'O' and has only one child), swap them
 
   const gallery = document.getElementById(elemID)
   const bands = gallery.children
 
   while (1) {
-    let somethingHappened = [
+    let somethingHappened = (columns % 2 == 0) ? [
       putUnderfilledAtoLast(gallery, bands, imgObjs),
       mergeTwoUnderfilledAs(gallery, bands, imgObjs),
       swapPenultAwithLastO(gallery, bands, imgObjs)
+    ] : [
+      // putUnderfilledAtoLast(gallery, bands, imgObjs),
+      // mergeTwoUnderfilledAs(gallery, bands, imgObjs),
+      // swapPenultAwithLastO(gallery, bands, imgObjs)
     ]
-    if (!somethingHappened.some(Boolean)) break; // if nothing changed, break
+    if (somethingHappened.length == 0 || !somethingHappened.some(Boolean)) break; // if nothing changed, break
   }
 
   turnTrailingAintoO(gallery, bands, imgObjs)
@@ -1294,22 +1530,27 @@ function pack(elemID, prefix) {
 
     let gallery = document.getElementById(elemID)
 
-    let columns = Math.round(gallery.clientWidth / (INTERNAL_WIDTH / 2))
-    console.log("columns", columns)
-    if (columns % 2 == 0) {
-      gallery.style.setProperty('grid-template-columns', `repeat(${(columns/2)|0}, 1fr)`)
+    COLUMNS = Math.round(gallery.clientWidth / (INTERNAL_WIDTH / 2))
+
+    console.log("columns", COLUMNS)
+
+    if (COLUMNS % 2 == 0) {
+      gallery.style.setProperty('grid-template-columns', `repeat(${(COLUMNS/2)|0}, 1fr)`)
       gallery.style.setProperty('grid-template-rows', 'unset')
     }
     else {
-      gallery.style.setProperty('grid-template-columns', `repeat(${(columns/2)|0}, 2fr) 1fr`)
+      gallery.style.setProperty('grid-template-columns', `repeat(${(COLUMNS/2)|0}, 2fr) 1fr`)
       gallery.style.setProperty('grid-template-rows', 'repeat(auto-fit, 1fr 1fr)')
     }
 
     precalculateDim(imgObjs)
-    renderGallery(elemID, prefix, imgObjs, columns)
-    postProcessGallery(elemID, prefix, imgObjs)
-    adjustBandHeightMultiColumn(elemID, prefix, imgObjs, columns)
+    renderGallery(elemID, prefix, imgObjs, COLUMNS)
+    postProcessGallery(elemID, prefix, imgObjs, COLUMNS)
+    adjustBandHeightMultiColumn(elemID, prefix, imgObjs, COLUMNS)
   })
 }
 
+let COLUMNS = 0
+let BAND_COUNT = 0
 const INTERNAL_WIDTH = 768
+const INT_WIDTH_VERT = INTERNAL_WIDTH / 2
