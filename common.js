@@ -1240,18 +1240,50 @@ function geomean(numbers) {
   return Math.exp(logSum / numbers.length)
 }
 
-function adjustBandHeightMultiColumn(elemID, prefix, imgObjs, columns) {
-  if (columns == 1) return;
+function adjustBandHeightMultiColumn(elemID, prefix, imgObjs, columns0) {
+  if (columns0 == 1) return;
 
   const gallery = document.getElementById(elemID)
   const bands = gallery.children
+  const gap = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gaps'))
 
-  for (let i = 0; i < bands.length; i += columns) {
-    let sameRowBands = [...Array(columns).keys()].map(it => bands[i + it] ).filter(it => it !== undefined)
+  // even number of columns?
+  if (columns0 % 2 == 0) {
+    let columns = columns0 / 2
+    for (let i = 0; i < bands.length; i += columns) {
+      let sameRowBands = [...Array(columns).keys()].map(it => bands[i + it] ).filter(it => it !== undefined)
 
-    let bandHeights = sameRowBands.map(it => parseInt(it.style.height)) // '123px' -> 123
-    let bandGeomean = Math.round(geomean(bandHeights))|0
-    sameRowBands.forEach(it => it.style.height = `${bandGeomean}px`)
+      let bandHeights = sameRowBands.map(it => parseInt(it.style.height)) // '123px' -> 123
+      let bandGeomean = Math.round(geomean(bandHeights))|0
+      sameRowBands.forEach(it => it.style.height = `${bandGeomean}px`)
+    }
+  }
+  // odd number of columns?
+  else {
+    let columns = columns0
+    let hcols = (columns / 2)|0 // 1 for columns=3, 2 for columns=5, ...
+
+    // single cluster is arranged like 'h1 h1 v h2 h2'
+    // 1. set heights for h1s
+    // 2. set heights for h2s
+    // 3. set height of v as (h1s.height + h2s.height + var(--gaps))
+
+    // when columns is odd, number of bands in each "cluster" is conveniently equal to the columns count
+    for (let i = 0; i < bands.length; i += columns) {
+      let sameRowBandsHi = [...Array((columns/2)|0).keys()].map(it => bands[i + it] ).filter(it => it !== undefined)
+      let sameRowBandsLo = [...Array((columns/2)|0).keys()].map(it => bands[i + hcols + 1 + it] ).filter(it => it !== undefined)
+
+      let bandHeightsHi = sameRowBandsHi.map(it => parseInt(it.style.height)) // '123px' -> 123
+      let bandGeomeanHi = Math.round(geomean(bandHeightsHi))|0
+      sameRowBandsHi.forEach(it => it.style.height = `${bandGeomeanHi}px`)
+
+      let bandHeightsLo = sameRowBandsLo.map(it => parseInt(it.style.height)) // '123px' -> 123
+      let bandGeomeanLo = Math.round(geomean(bandHeightsLo))|0
+      sameRowBandsLo.forEach(it => it.style.height = `${bandGeomeanLo}px`)
+
+      if (bands[i + hcols] !== undefined)
+        bands[i + hcols].style.height = `${bandGeomeanHi + bandGeomeanLo + gap}px`;
+    }
   }
 }
 
@@ -1262,9 +1294,16 @@ function pack(elemID, prefix) {
 
     let gallery = document.getElementById(elemID)
 
-    let columns = Math.round(gallery.clientWidth / INTERNAL_WIDTH)
+    let columns = Math.round(gallery.clientWidth / (INTERNAL_WIDTH / 2))
     console.log("columns", columns)
-    gallery.style.setProperty('grid-template-columns', `repeat(${columns}, 1fr)`)
+    if (columns % 2 == 0) {
+      gallery.style.setProperty('grid-template-columns', `repeat(${(columns/2)|0}, 1fr)`)
+      gallery.style.setProperty('grid-template-rows', 'unset')
+    }
+    else {
+      gallery.style.setProperty('grid-template-columns', `repeat(${(columns/2)|0}, 2fr) 1fr`)
+      gallery.style.setProperty('grid-template-rows', 'repeat(auto-fit, 1fr 1fr)')
+    }
 
     precalculateDim(imgObjs)
     renderGallery(elemID, prefix, imgObjs, columns)

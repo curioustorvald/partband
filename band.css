@@ -23,6 +23,10 @@ band {
   flex-direction: row;
   height: 480px; /* temporary. should be dynamic */
 }
+band[dir="v"] {
+  grid-row: span 2;
+  height: 800px; /* temporary. should be dynamic */
+}
 .panel {
   background-size: cover;
   background-position: center;
