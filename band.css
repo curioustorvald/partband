@@ -11,7 +11,7 @@ body {
 }
 gallery {
   display: grid;
-  padding: 10px;
+  padding: var(--gaps);
   width: 100vw;
 
   gap: var(--gaps);
@@ -22,8 +22,6 @@ band {
   width: 100%;
   flex-direction: row;
   height: 480px; /* temporary. should be dynamic */
-
-/*   margin-bottom: 10px; /* masonry gap */ */
 }
 .panel {
   background-size: cover;
@@ -47,15 +45,6 @@ bandpanel.leaf {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 
   transition: all 0.1s ease;
-}
-
-bandpanel.main {
-  width: 50%;
-  height: 100%;
-}
-bandpanel.sub {
-  width: 50%;
-  height: 100%;
 }
 
 bandpanel[nsfw="1"] {

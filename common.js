@@ -1260,8 +1260,11 @@ function pack(elemID, prefix) {
     let imgObjs0 = JSON.parse(str).arts; precalculateDim(imgObjs0)
     let imgObjs = imgObjs0.filter(it => it.ord % 10 == 0 || it.ord < 10)
 
-    let columns = 2 // TODO use client width
-    document.getElementById(elemID).style.setProperty('grid-template-columns', `repeat(${columns}, 1fr)`)
+    let gallery = document.getElementById(elemID)
+
+    let columns = Math.round(gallery.clientWidth / INTERNAL_WIDTH)
+    console.log("columns", columns)
+    gallery.style.setProperty('grid-template-columns', `repeat(${columns}, 1fr)`)
 
     precalculateDim(imgObjs)
     renderGallery(elemID, prefix, imgObjs, columns)
@@ -1270,4 +1273,4 @@ function pack(elemID, prefix) {
   })
 }
 
-const INTERNAL_WIDTH = 900
+const INTERNAL_WIDTH = 768
