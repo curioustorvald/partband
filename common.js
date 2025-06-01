@@ -794,9 +794,9 @@ function panel(image, col, row, flip) {
   return div;
 }
 
-let bandCount = 1
-function makeBandClass(prefix, rule) {
-  const flip = bandCount % 2 === 0;
+let bandCount = 0
+function makeBandClass(prefix, rule, columns) {
+  const flip = bandCount % (2 * columns) >= columns
   const bandClass = new PartitionedBand(prefix, rule, flip)
   return bandClass
 }
@@ -828,7 +828,7 @@ function clippedImageDim(rawRatio) {
   return (rawRatio < 1.0) ? (0.25/clippedDim) : (4*clippedDim)
 }
 
-function renderGallery(elemID, prefix, images) {
+function renderGallery(elemID, prefix, images, columns) {
   const gallery = document.getElementById(elemID);
   const shuffled = shuffle([...images]);
   const important = shuffled.filter(img => (img.epic|0) >= 10);
@@ -938,7 +938,7 @@ function renderGallery(elemID, prefix, images) {
         continue;
       }
 
-      band = makeBandClass(prefix, rule)
+      band = makeBandClass(prefix, rule, columns)
       band.putImages([main]) // put main image only for adjustBandPartitioning
       band.adjustBandPartitioning() // this calculates band height and sub panel width
 
@@ -1235,13 +1235,38 @@ function lockNSFW() {
   document.documentElement.style.setProperty('--nsfw-blur-enabled', '1')
 }
 
+function geomean(numbers) {
+  const logSum = numbers.reduce((acc, num) => acc + Math.log(num), 0)
+  return Math.exp(logSum / numbers.length)
+}
+
+function adjustBandHeightMultiColumn(elemID, prefix, imgObjs, columns) {
+  if (columns == 1) return;
+
+  const gallery = document.getElementById(elemID)
+  const bands = gallery.children
+
+  for (let i = 0; i < bands.length; i += columns) {
+    let sameRowBands = [...Array(columns).keys()].map(it => bands[i + it] ).filter(it => it !== undefined)
+
+    let bandHeights = sameRowBands.map(it => parseInt(it.style.height)) // '123px' -> 123
+    let bandGeomean = Math.round(geomean(bandHeights))|0
+    sameRowBands.forEach(it => it.style.height = `${bandGeomean}px`)
+  }
+}
+
 function pack(elemID, prefix) {
   loadJson(`${prefix}.json`, str => {
     let imgObjs0 = JSON.parse(str).arts; precalculateDim(imgObjs0)
     let imgObjs = imgObjs0.filter(it => it.ord % 10 == 0 || it.ord < 10)
+
+    let columns = 2 // TODO use client width
+    document.getElementById(elemID).style.setProperty('grid-template-columns', `repeat(${columns}, 1fr)`)
+
     precalculateDim(imgObjs)
-    renderGallery(elemID, prefix, imgObjs)
+    renderGallery(elemID, prefix, imgObjs, columns)
     postProcessGallery(elemID, prefix, imgObjs)
+    adjustBandHeightMultiColumn(elemID, prefix, imgObjs, columns)
   })
 }
 

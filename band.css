@@ -1,5 +1,5 @@
 * {
-  --gaps: 10px;
+  --gaps: 12px;
   --nsfw-blur-radius: 128px;
   box-sizing: border-box;
 }
@@ -10,12 +10,11 @@ body {
   padding: 0;
 }
 gallery {
-  display: block;
+  display: grid;
   padding: 10px;
   width: 100vw;
 
-  column-count: 2; /* adjustable */
-  column-gap: var(--gaps);
+  gap: var(--gaps);
 }
 band {
   display: flex;
@@ -24,7 +23,7 @@ band {
   flex-direction: row;
   height: 480px; /* temporary. should be dynamic */
 
-  margin-bottom: 10px; /* masonry gap */
+/*   margin-bottom: 10px; /* masonry gap */ */
 }
 .panel {
   background-size: cover;
@@ -39,6 +38,17 @@ bandpanel {
   gap: var(--gaps);
   transition: all 0.1s ease;
 }
+
+bandpanel.leaf {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+/*   background: rgba(255, 255, 255, 0.55); */
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+
+  transition: all 0.1s ease;
+}
+
 bandpanel.main {
   width: 50%;
   height: 100%;
