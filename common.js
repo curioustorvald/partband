@@ -1411,7 +1411,9 @@ function turnTrailingAintoO(gallery, bands, imgObjs) {
 
       // turn A-panel into O-panel
       last.setAttribute('rule', 'O')
-      last.querySelector('.main.leaf').style.width = '100%'
+      let mainLeaf = last.querySelector('.main.leaf')
+      if (mainLeaf.style.width != '') mainLeaf.style.width = '100%'
+      if (mainLeaf.style.height != '') mainLeaf.style.height = '100%'
       last.querySelector('.sub.leaf').remove() // nuke it
     }
   }
@@ -1425,7 +1427,53 @@ function nukeUnderfilledPanel(gallery, bands, imgObjs) {
   // take its older sibling, then set its width/height to 100% (whichever is actually defined)
 
   let noImgPanels = Array.from(document.getElementsByTagName('bandpanel')).filter(it => it.className.endsWith('leaf') && it.style.backgroundImage.length < 1)
-  TODO()
+
+  noImgPanels.forEach(panel => {
+    let previousSibling = panel.previousSibling
+    if (previousSibling === null) previousSibling = panel.nextSibling
+
+    let parentNode = panel.parentNode
+
+    // console.log("nuking no image panel", panel, "parent", parentNode)
+
+    // resize the prev sibling
+    if (previousSibling.style.width != '') previousSibling.style.width = '100%';
+    if (previousSibling.style.height != '') previousSibling.style.height = '100%';
+
+    // if parent node is vertical, fit to image's ratio, max value: prev band's height into this elem's height
+    if (parentNode.getAttribute('dir') == 'v') {
+      let clampMax = parseInt(parentNode.previousSibling.style.height)
+      let imageOrd = getImageOrdFromURL(previousSibling.style.backgroundImage)
+      let imageRatio = imgObjs.filter(it => it.ord == imageOrd)[0].ratio
+      let panelHeight = coerceIn(Math.round(INT_WIDTH_VERT / imageRatio)|0, INT_WIDTH_VERT, clampMax)
+
+      // console.log(`new height: coerceIn(${Math.round(INT_WIDTH_VERT / imageRatio)|0}, 0, ${clampMax})`, `imgRatio=${imageRatio}`)
+
+      parentNode.style.height = `${panelHeight}px`
+    }
+
+    // the offending panel must be removed last (for easier debugging)
+    panel.remove()
+  })
+}
+
+function clipLastVertPanel(gallery, bands, imgObjs) {
+  if (bands.length >= 2) {
+    const last = bands[bands.length - 1]
+    const penult = bands[bands.length - 2]
+
+    if (last.getAttribute('dir') == 'v') {
+      const lastHeight = parseInt(last.style.height)
+      const penultHeight = parseInt(penult.style.height)
+
+      // console.log("last", last, "penult", penult)
+      // console.log("lastHgt", lastHeight, "penultHgt", penultHeight)
+
+      if (lastHeight > penultHeight) {
+        last.style.height = `${penultHeight}px`
+      }
+    }
+  }
 }
 
 function postProcessGallery(elemID, prefix, imgObjs, columns) {
@@ -1440,7 +1488,6 @@ function postProcessGallery(elemID, prefix, imgObjs, columns) {
       mergeTwoUnderfilledAs(gallery, bands, imgObjs),
       swapPenultAwithLastO(gallery, bands, imgObjs)
     ] : [
-      nukeUnderfilledPanel(gallery, bands, imgObjs)
       // putUnderfilledAtoLast(gallery, bands, imgObjs),
       // mergeTwoUnderfilledAs(gallery, bands, imgObjs),
       // swapPenultAwithLastO(gallery, bands, imgObjs)
@@ -1449,6 +1496,7 @@ function postProcessGallery(elemID, prefix, imgObjs, columns) {
   }
 
   turnTrailingAintoO(gallery, bands, imgObjs)
+  nukeUnderfilledPanel(gallery, bands, imgObjs)
 }
 
 function precalculateDim(imgObjs) {
@@ -1560,6 +1608,7 @@ function pack(elemID, prefix) {
     renderGallery(elemID, prefix, imgObjs, COLUMNS)
     postProcessGallery(elemID, prefix, imgObjs, COLUMNS)
     adjustBandHeightMultiColumn(elemID, prefix, imgObjs, COLUMNS)
+    clipLastVertPanel(gallery, gallery.children, imgObjs)
   })
 }
 
