@@ -771,8 +771,7 @@ class PartitionedBand {
     this.picturePanels.forEach((panel, i) => {
       if (imgs[i]) {
         let ord = imgs[i].ord
-        let imgURL = `https://cdn.taimuworld.com/${this.prefix}_thumbs/${ord}.webp`
-        panel.style.backgroundImage = `url(${imgURL})` // adjust to fit the actual data structure
+        panel.style.backgroundImage = `url(${toImageURL(this.prefix, ord)})` // adjust to fit the actual data structure
         let isImageNSFW = (10 < ord && ord % 10 != 0) || (10000 <= ord && ord < 100000) || (200000 <= ord && ord <= 400000)
 
         panel.setAttribute("nsfw", isImageNSFW|0)
@@ -1522,13 +1521,31 @@ function toggleNSFW() {
   }
 }
 
+function updatePictureInPlace(prefix, imgObjs, nsfw) {
+  let imgPanels = Array.from(document.getElementsByTagName('bandpanel')).filter(it => it.className.endsWith('leaf') && it.style.backgroundImage.length >= 1)
+
+  imgPanels.forEach(panel => {
+    let imageOrd = getImageOrdFromURL(panel.style.backgroundImage)
+    if ((10 <= imageOrd && imageOrd < 10000) || (100000 <= imageOrd && imageOrd < 200000)) {
+      let altOrd = (nsfw) ? imageOrd + 1 : imageOrd - 1
+      // check if altOrd is a thing
+      let altImg = imgObjs.filter(it => it.ord == altOrd)[0]
+      if (altImg) {
+        panel.style.backgroundImage = `url(${toImageURL(prefix, altOrd)})`
+      }
+    }
+  })
+}
+
 function unlockNSFW() {
   showNSFW = true
+  updatePictureInPlace(prefix, IMG_OBJS, showNSFW)
   document.documentElement.style.setProperty('--nsfw-blur-enabled', '0')
 }
 
 function lockNSFW() {
   showNSFW = false
+  updatePictureInPlace(prefix, IMG_OBJS, showNSFW)
   document.documentElement.style.setProperty('--nsfw-blur-enabled', '1')
 }
 
@@ -1584,16 +1601,17 @@ function adjustBandHeightMultiColumn(elemID, prefix, imgObjs, columns0) {
   }
 }
 
-function pack(elemID, prefix) {
-  loadJson(`${prefix}.json`, str => {
-    let imgObjs0 = JSON.parse(str).arts; precalculateDim(imgObjs0)
-    let imgObjs = imgObjs0.filter(it => it.ord % 10 == 0 || it.ord < 10)
+function pack(elemID, prefix0) {
+  loadJson(`${prefix0}.json`, str => {
+    prefix = prefix0
+    IMG_OBJS = JSON.parse(str).arts; precalculateDim(IMG_OBJS)
+    let imgObjs = IMG_OBJS.filter(it => it.ord % 10 == 0 || it.ord < 10)
 
     let gallery = document.getElementById(elemID)
 
     COLUMNS = Math.round(gallery.clientWidth / (INTERNAL_WIDTH / 2))
 
-    console.log("columns", COLUMNS)
+    // console.log("columns", COLUMNS)
 
     if (COLUMNS % 2 == 0) {
       gallery.style.setProperty('grid-template-columns', `repeat(${(COLUMNS/2)|0}, 1fr)`)
@@ -1606,12 +1624,18 @@ function pack(elemID, prefix) {
 
     precalculateDim(imgObjs)
     renderGallery(elemID, prefix, imgObjs, COLUMNS)
-    postProcessGallery(elemID, prefix, imgObjs, COLUMNS)
-    adjustBandHeightMultiColumn(elemID, prefix, imgObjs, COLUMNS)
-    clipLastVertPanel(gallery, gallery.children, imgObjs)
+    postProcessGallery(elemID, prefix, IMG_OBJS, COLUMNS)
+    adjustBandHeightMultiColumn(elemID, prefix, IMG_OBJS, COLUMNS)
+    clipLastVertPanel(gallery, gallery.children, IMG_OBJS)
   })
 }
 
+function toImageURL(prefix, ord) {
+  return `https://cdn.taimuworld.com/${prefix}_thumbs/${ord}.webp`
+}
+
+let IMG_OBJS = {}
+let prefix = ''
 let COLUMNS = 0
 let BAND_COUNT = 0
 const INTERNAL_WIDTH = 768

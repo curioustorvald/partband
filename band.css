@@ -39,7 +39,6 @@ bandpanel {
   background-position: center;
   border-radius: 8px;
   gap: var(--gaps);
-  transition: all 0.1s ease;
 }
 
 bandpanel.leaf {
@@ -48,14 +47,11 @@ bandpanel.leaf {
 /*   background: rgba(255, 255, 255, 0.55); */
   border: 1px solid rgba(0, 0, 0, 0.25);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-
-  transition: all 0.1s ease;
 }
 
 bandpanel[nsfw="1"] {
   position: relative;
   overflow: hidden;
-  transition: filter 0.1s ease;
 }
 
 bandpanel[nsfw="1"]::before {
@@ -67,6 +63,5 @@ bandpanel[nsfw="1"]::before {
   transform: scale(1.0);
   z-index: 0;
   opacity: var(--nsfw-blur-enabled);
-  transition: all 0.1s ease;
 }
 
