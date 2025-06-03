@@ -1,6 +1,5 @@
 * {
   --gaps: 12px;
-  --nsfw-blur-radius: 128px;
   box-sizing: border-box;
 }
 
@@ -57,10 +56,8 @@ bandpanel[nsfw="1"] {
 bandpanel[nsfw="1"]::before {
   content: "";
   position: absolute;
-  inset: calc(var(--nsfw-blur-radius) * -2);
+  inset: -65536px;
   background: inherit;
-  filter: blur(calc(var(--nsfw-blur-radius) * var(--nsfw-blur-enabled)));
-  transform: scale(1.0);
   z-index: 0;
   opacity: var(--nsfw-blur-enabled);
 }
