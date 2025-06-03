@@ -1551,11 +1551,9 @@ function pack(elemID, prefix0) {
     let gallery = document.getElementById(elemID)
     COLUMNS = Math.round(gallery.clientWidth / (INTERNAL_WIDTH / 2))
 
-    // console.log("columns", COLUMNS)
-
     _pack()
 
-    attachResizeEvent()
+    attachResizeEvent() // it's little buggy but should be okay for tablet orientation changes
   })
 }
 
