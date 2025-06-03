@@ -1553,7 +1553,7 @@ function pack(elemID, prefix0) {
 
     _pack()
 
-    attachResizeEvent() // it's little buggy but should be okay for tablet orientation changes
+    attachResizeEvent()
   })
 }
 
@@ -1585,6 +1585,7 @@ function attachResizeEvent() {
 
 function clearGallery(gallery) {
   gallery.innerHTML = ''
+  BAND_COUNT = 0
 }
 
 function refreshColumnCount() {
