@@ -1404,7 +1404,8 @@ function nukeUnderfilledPanel(gallery, bands, imgObjs) {
 }
 
 function clipLastVertPanel(gallery, bands, imgObjs) {
-  if (bands.length >= 2) {
+  // this rule only applies for multi-column layouts
+  if (bands.length >= 2 && COLUMNS > 1) {
     const last = bands[bands.length - 1]
     const penult = bands[bands.length - 2]
 
@@ -1436,8 +1437,6 @@ function clipLastVertPanel(gallery, bands, imgObjs) {
         let newHeight = Math.round(newWidth / imgRatio)|0
         last.setAttribute('style', `height: ${newHeight}px`)
         last.children[0].style.width = '100%'
-
-
       }
     }
   }
