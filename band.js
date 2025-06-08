@@ -40,21 +40,9 @@ function mustBeVertical(x) {
 
   let modulo = x % COLUMNS
   let row = (x / COLUMNS)|0
-  let thisRowRnd = VERT_INDICES_BY_ROW[row]
+  let thisRowRnd = VERT_INDICES_BY_ROW[row] // filled with random numbers between 0 and (COLUMNS/2-1)
 
   return modulo == thisRowRnd
-
-  /*
-  // For other values of p, check if x fits the arithmetic sequence
-  // Starting value: (p-1)/2, increment: p
-  const start = (COLUMNS - 1) / 2;
-
-  // Check if x can be expressed as start + n*p where n >= 0
-  if (x < start) return false;
-
-  const diff = x - start;
-  return diff % COLUMNS === 0;
-  */
 }
 
 function mustBeFlipped(x) {
@@ -70,6 +58,69 @@ function mustBeFlipped(x) {
 
   return false
 }
+
+// Lazy Loading System
+class BackgroundImageLazyLoader {
+  constructor() {
+    this.observer = null;
+    this.loadedImages = new Set();
+    this.init();
+  }
+
+  init() {
+    // Create intersection observer with root margin to start loading before element is visible
+    this.observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && !this.loadedImages.has(entry.target)) {
+          this.loadBackgroundImage(entry.target);
+        }
+      });
+    }, {
+      rootMargin: '200px' // Start loading 200px before element comes into view
+    });
+  }
+
+  loadBackgroundImage(element) {
+    const imageUrl = element.getAttribute('data-bg-src');
+    if (!imageUrl) return;
+
+    // Create a temporary image to preload
+    const img = new Image();
+    img.onload = () => {
+      // Apply the background image after it's loaded
+      element.style.backgroundImage = `url(${imageUrl})`;
+      element.classList.add('bg-loaded');
+      this.loadedImages.add(element);
+
+      // Stop observing this element
+      this.observer.unobserve(element);
+    };
+
+    img.onerror = () => {
+      console.error('Failed to load image:', imageUrl);
+      element.classList.add('bg-error');
+      this.observer.unobserve(element);
+    };
+
+    img.src = imageUrl;
+  }
+
+  observe(element) {
+    if (element && element.hasAttribute('data-bg-src')) {
+      this.observer.observe(element);
+    }
+  }
+
+  disconnect() {
+    if (this.observer) {
+      this.observer.disconnect();
+    }
+    this.loadedImages.clear();
+  }
+}
+
+// Global lazy loader instance
+const bgLazyLoader = new BackgroundImageLazyLoader();
 
 class PartitionedBand {
   DEBUG = 0
@@ -709,11 +760,19 @@ class PartitionedBand {
     this.picturePanels.forEach((panel, i) => {
       if (imgs[i]) {
         let ord = imgs[i].ord
-        panel.style.backgroundImage = `url(${toImageURL(this.prefix, ord)})` // adjust to fit the actual data structure
+        let imageUrl = toImageURL(this.prefix, ord);
+
+        // Instead of setting background-image directly, use data attribute
+        panel.setAttribute('data-bg-src', imageUrl);
+        panel.removeAttribute('style'); // Clear any existing background-image
+
         let isImageNSFW = (10 < ord && ord % 10 != 0) || (10000 <= ord && ord < 100000) || (200000 <= ord && ord <= 400000)
 
         panel.setAttribute("nsfw", isImageNSFW|0)
         panel.setAttribute("onclick", `viewImage(${ord})`)
+
+        // Register panel for lazy loading
+        bgLazyLoader.observe(panel);
       }
     })
 
@@ -1247,12 +1306,12 @@ function swapPenultAwithLastO(gallery, bands) {
     const penultRule = penult.getAttribute('rule')
     const penultIsNotO = (penultRule !== null && penultRule !== 'O')
     const penultPanelsWithImage = Array.from(penult.children).filter(child =>
-      child.style.backgroundImage && child.style.backgroundImage !== ''
+      (child.style.backgroundImage && child.style.backgroundImage !== '') ||
+      child.hasAttribute('data-bg-src')
     )
 
     // Check if the penult has exactly one child element
     const penultHasOneChild = (penultPanelsWithImage.length === 1)
-
 
     if (lastIsO && penultIsNotO && penultHasOneChild) {
       last.after(penult)
@@ -1273,14 +1332,16 @@ function mergeTwoUnderfilledAs(gallery, bands, imgObjs) {
     const lastRule = last.getAttribute('rule')
     const lastIsA = (lastRule !== null && lastRule === 'A')
     const lastPanelsWithImage = Array.from(last.children).filter(child =>
-      child.style.backgroundImage && child.style.backgroundImage !== ''
+      (child.style.backgroundImage && child.style.backgroundImage !== '') ||
+      child.hasAttribute('data-bg-src')
     )
 
     // check the rule of the penult
     const penultRule = penult.getAttribute('rule')
     const penultIsA = (lastRule !== null && lastRule === 'A')
     const penultPanelsWithImage = Array.from(penult.children).filter(child =>
-      child.style.backgroundImage && child.style.backgroundImage !== ''
+      (child.style.backgroundImage && child.style.backgroundImage !== '') ||
+      child.hasAttribute('data-bg-src')
     )
 
     if (penultIsA && lastIsA && lastPanelsWithImage.length === 1 && penultPanelsWithImage.length === 1) {
@@ -1290,12 +1351,23 @@ function mergeTwoUnderfilledAs(gallery, bands, imgObjs) {
       if (lastPicturePanel !== null && penultEmptyPanel !== null) {
         // console.log("Merging two images into one band:", penultMainPanel.style.backgroundImage, lastPicturePanel.style.backgroundImage)
 
-        // copy image of the last to the empty panel of the penult
-        penultEmptyPanel.style.backgroundImage = lastPicturePanel.style.backgroundImage
+        // Copy image URL and attributes
+        let lastImageUrl = lastPicturePanel.style.backgroundImage || lastPicturePanel.getAttribute('data-bg-src');
+        let penultImageUrl = penultMainPanel.style.backgroundImage || penultMainPanel.getAttribute('data-bg-src');
+
+        // If the image was already loaded, copy the background-image
+        if (lastPicturePanel.classList.contains('bg-loaded')) {
+          penultEmptyPanel.style.backgroundImage = lastPicturePanel.style.backgroundImage;
+          penultEmptyPanel.classList.add('bg-loaded');
+        } else {
+          // Otherwise, copy the data-bg-src for lazy loading
+          penultEmptyPanel.setAttribute('data-bg-src', lastImageUrl.replace(/url\(["']?|["']?\)/g, ''));
+          bgLazyLoader.observe(penultEmptyPanel);
+        }
 
         // resize the band
-        let img1Ord = getImageOrdFromURL(penultMainPanel.style.backgroundImage)
-        let img2Ord = getImageOrdFromURL(penultEmptyPanel.style.backgroundImage)
+        let img1Ord = getImageOrdFromURL(penultImageUrl)
+        let img2Ord = getImageOrdFromURL(lastImageUrl)
         let img1RatioRaw = imgObjs.filter(it => it.ord == img1Ord)[0].ratio
         let img2RatioRaw = imgObjs.filter(it => it.ord == img2Ord)[0].ratio
         let img1Ratio = img1RatioRaw / (img1RatioRaw + img2RatioRaw)
@@ -1305,6 +1377,7 @@ function mergeTwoUnderfilledAs(gallery, bands, imgObjs) {
 
         // copy over necessary flags (e.g. NSFW) into penultEmptyPanel
         penultEmptyPanel.setAttribute('nsfw', lastPicturePanel.getAttribute('nsfw'))
+        penultEmptyPanel.setAttribute('onclick', lastPicturePanel.getAttribute('onclick'))
 
         // remove the last band from the gallery
         gallery.removeChild(last)
@@ -1321,7 +1394,8 @@ function putUnderfilledAtoLast(gallery, bands) {
   if (bands.length >= 2) {
     let underfilled = Array.from(bands).slice(0, -1).filter(it => {
       const panelsWithImage = Array.from(it.children).filter(child =>
-        child.style.backgroundImage && child.style.backgroundImage !== ''
+        (child.style.backgroundImage && child.style.backgroundImage !== '') ||
+        child.hasAttribute('data-bg-src')
       )
       return (it.getAttribute('rule') === 'A' && panelsWithImage.length === 1)
     })
@@ -1345,14 +1419,16 @@ function turnTrailingAintoO(gallery, bands, imgObjs) {
 
     // extract the image from the last
     const lastPanelWithImage = Array.from(last.children).filter(child =>
-      child.style.backgroundImage && child.style.backgroundImage !== ''
+      (child.style.backgroundImage && child.style.backgroundImage !== '') ||
+      child.hasAttribute('data-bg-src')
     )
 
     // of course, only do it when there is no image on the other side
     if (lastPanelWithImage.length == 1) {
       // console.log("Underfilled A-band found. Will convert it to O-band. Image:", lastPanelWithImage[0].style.backgroundImage, "; band:", last)
 
-      const imageOrd = getImageOrdFromURL(lastPanelWithImage[0].style.backgroundImage)
+      const imageUrl = lastPanelWithImage[0].style.backgroundImage || lastPanelWithImage[0].getAttribute('data-bg-src') || '';
+      const imageOrd = getImageOrdFromURL(imageUrl)
       const imageRatio = imgObjs.filter(it => it.ord == imageOrd)[0].ratio
 
       // turn A-panel into O-panel
@@ -1372,7 +1448,11 @@ function nukeUnderfilledPanel(gallery, bands, imgObjs) {
   // nuke it
   // take its older sibling, then set its width/height to 100% (whichever is actually defined)
 
-  let noImgPanels = Array.from(document.getElementsByTagName('bandpanel')).filter(it => it.className.endsWith('leaf') && it.style.backgroundImage.length < 1)
+  let noImgPanels = Array.from(document.getElementsByTagName('bandpanel')).filter(it => {
+    return it.className.endsWith('leaf') &&
+           !it.style.backgroundImage &&
+           !it.hasAttribute('data-bg-src');
+  });
 
   noImgPanels.forEach(panel => {
     let previousSibling = panel.previousSibling
@@ -1389,7 +1469,11 @@ function nukeUnderfilledPanel(gallery, bands, imgObjs) {
     // if parent node is vertical, fit to image's ratio, max value: prev band's height into this elem's height
     if (parentNode.getAttribute('dir') == 'v') {
       let clampMax = parseInt(parentNode.previousSibling.style.height)
-      let imageOrd = getImageOrdFromURL(previousSibling.style.backgroundImage)
+
+      // Get image URL from either background-image or data-bg-src
+      let imageUrl = previousSibling.style.backgroundImage || previousSibling.getAttribute('data-bg-src') || '';
+      let imageOrd = getImageOrdFromURL(imageUrl);
+
       let imageRatio = imgObjs.filter(it => it.ord == imageOrd)[0].ratio
       let panelHeight = coerceIn(Math.round(INT_WIDTH_VERT / imageRatio)|0, INT_WIDTH_VERT, clampMax)
 
@@ -1425,7 +1509,8 @@ function clipLastVertPanel(gallery, bands, imgObjs) {
       }
       // if it is the first, expand it
       else {
-        let imgOrd = getImageOrdFromURL(last.children[0].style.backgroundImage)
+        let imageUrl = last.children[0].style.backgroundImage || last.children[0].getAttribute('data-bg-src') || '';
+        let imgOrd = getImageOrdFromURL(imageUrl)
         let imgObj = IMG_OBJS[ordToIndex(imgOrd)]
         let imgRatio = imgObj.ratio
 
@@ -1474,7 +1559,13 @@ function precalculateDim(imgObjs) {
 }
 
 function getImageOrdFromURL(cssURL) {
-  return (cssURL.match(/(\d+)\.webp/)[1])|0
+  // Handle both url() format and plain URL
+  if (cssURL.startsWith('url(')) {
+    return (cssURL.match(/(\d+)\.webp/)[1])|0;
+  }
+  else {
+    return (cssURL.match(/(\d+)\.webp/)?.[1])|0 || 0;
+  }
 }
 
 function ordToIndex(ord) {
@@ -1494,16 +1585,31 @@ function togglensfw() {
 }
 
 function updatePictureInPlace(prefix, imgObjs, nsfw) {
-  let imgPanels = Array.from(document.getElementsByTagName('bandpanel')).filter(it => it.className.endsWith('leaf') && it.style.backgroundImage.length >= 1)
+  let imgPanels = Array.from(document.getElementsByTagName('bandpanel')).filter(it => {
+    return it.className.endsWith('leaf') &&
+           (it.style.backgroundImage.length >= 1 || it.hasAttribute('data-bg-src'))
+  });
 
   imgPanels.forEach(panel => {
-    let imageOrd = getImageOrdFromURL(panel.style.backgroundImage)
+    let currentUrl = panel.style.backgroundImage || panel.getAttribute('data-bg-src') || '';
+    let imageOrd = getImageOrdFromURL(currentUrl);
+
     if ((10 <= imageOrd && imageOrd < 10000) || (100000 <= imageOrd && imageOrd < 200000)) {
       let altOrd = (nsfw) ? imageOrd + 1 : imageOrd - 1
       // check if altOrd is a thing
       let altImg = imgObjs.filter(it => it.ord == altOrd)[0]
       if (altImg) {
-        panel.style.backgroundImage = `url(${toImageURL(prefix, altOrd)})`
+        let newUrl = toImageURL(prefix, altOrd);
+
+        // Check if image was already loaded
+        if (panel.classList.contains('bg-loaded')) {
+          // Update immediately if already loaded
+          panel.style.backgroundImage = `url(${newUrl})`;
+        } else {
+          // Update data attribute for lazy loading
+          panel.setAttribute('data-bg-src', newUrl);
+        }
+
         panel.setAttribute("onclick", `viewImage(${altOrd})`)
       }
     }
@@ -1514,14 +1620,12 @@ function unlockNSFW() {
   showNSFW = true
   updatePictureInPlace(prefix, IMG_OBJS, showNSFW)
   document.documentElement.style.setProperty('--nsfw-blur-enabled', '0')
-  setStatusLine(document.getElementById(ELEM_ID))
 }
 
 function lockNSFW() {
   showNSFW = false
   updatePictureInPlace(prefix, IMG_OBJS, showNSFW)
   document.documentElement.style.setProperty('--nsfw-blur-enabled', '1')
-  setStatusLine(document.getElementById(ELEM_ID))
 }
 
 function geomean(numbers) {
@@ -1631,20 +1735,15 @@ function _pack() {
   let gallery = document.getElementById(ELEM_ID)
   let imgObjs = (showNSFW) ? IMG_OBJS_UNSAFE : IMG_OBJS_SAFE
 
-  if (COLUMNS % 2 == 0) {
-    gallery.style.setProperty('grid-template-columns', `repeat(${COLUMNS}, 1fr)`)
-    gallery.style.setProperty('grid-template-rows', 'unset')
-  }
-  else {
-    gallery.style.setProperty('grid-template-columns', `repeat(${COLUMNS}, 1fr)`)
-    gallery.style.setProperty('grid-template-rows', 'repeat(auto-fit, 1fr 1fr)')
-  }
+  gallery.style.setProperty('grid-template-columns', `repeat(${COLUMNS}, 1fr)`)
 
   clearGallery(gallery)
   renderGallery(imgObjs)
   postProcessGallery(IMG_OBJS)
   adjustBandHeightMultiColumn(IMG_OBJS, COLUMNS)
   clipLastVertPanel(gallery, gallery.children, IMG_OBJS)
+
+  setTimeout(forceLoadVisibleImages, 100)
 }
 
 function attachResizeEvent() {
@@ -1654,9 +1753,27 @@ function attachResizeEvent() {
 }
 
 function clearGallery(gallery) {
+  // Disconnect lazy loader to clean up observers
+  bgLazyLoader.disconnect()
+
   gallery.innerHTML = ''
   BAND_COUNT = 0
   resetRng()
+
+  // Reinitialize lazy loader for new content
+  bgLazyLoader.init()
+}
+
+function forceLoadVisibleImages() {
+  const panels = document.querySelectorAll('bandpanel[data-bg-src]');
+  panels.forEach(panel => {
+    const rect = panel.getBoundingClientRect();
+    const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
+
+    if (isVisible && !bgLazyLoader.loadedImages.has(panel)) {
+      bgLazyLoader.loadBackgroundImage(panel);
+    }
+  });
 }
 
 function refreshColumnCount() {
@@ -1675,7 +1792,10 @@ function toImageURL(prefix, ord) {
 }
 
 function viewImage(ord) {
-
+  if (isThisOrdNSFW(ord) && showNSFW || !isThisOrdNSFW(ord)) {
+    let idx = ordToIndex(ord)
+    //window.location.assign(`viewer.html?id=${idx}&p=${prefix}`)
+  }
 }
 
 let prefixToUnits = {

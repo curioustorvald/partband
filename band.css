@@ -47,3 +47,40 @@ bandpanel.leaf {
   border: 1px solid rgba(0, 0, 0, 0.25);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
+
+/* Lazy loading styles */
+bandpanel[data-bg-src] {
+  background-color: #f0f0f0; /* Placeholder color while loading */
+  transition: opacity 0.3s ease-in-out;
+}
+
+bandpanel[data-bg-src]:not(.bg-loaded) {
+  opacity: 0.8;
+}
+
+bandpanel.bg-loaded {
+  opacity: 1;
+}
+
+bandpanel.bg-error {
+  background-color: #ffcccc;
+}
+
+/* Optional: Add a loading spinner */
+bandpanel[data-bg-src]:not(.bg-loaded):not(.bg-error)::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid #ddd;
+  border-top-color: #666;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
