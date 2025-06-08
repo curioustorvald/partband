@@ -1370,7 +1370,7 @@ The magic number `clip_p = 0.444` creates optimal transition characteristics:
 - Gradual compression for moderate extremes (2:1 to 4:1)
 - Firm boundary preventing pathological cases (>4:1)
 
-Testing likely revealed that 0.444 creates the most visually pleasing compression curve—neither too aggressive (losing distinction between ratios) nor too permissive (allowing dominant images).
+Testing revealed that 0.444 creates the most visually pleasing compression curve—neither too aggressive (losing distinction between ratios) nor too permissive (allowing dominant images).
 
 ## **7.3 Optimisation Algorithms**
 
