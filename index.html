@@ -1,18 +1,23 @@
 <!DOCTYPE html>
-<html lang="en" style="--nsfw-blur-enabled: 1">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Partitioned Container Band Layout</title>
+  <link rel="stylesheet" href="../style.css" />
   <link rel="stylesheet" href="band.css" />
   <script src="common.js"></script>
   <script src="band.js"></script>
 </head>
-<body onload="pack('gallerymain', 'paintings')">
+<body onload="pack('gallerymain', 'photos', true)" style="max-width: calc(100vw)">
   <h1 style="text-align: center">Partitioned Container Band Layout</h1>
-  <center>
-    <button onclick="toggleNSFW()">Toggle NSFW</button>
-  </center>
+  <h2 style="text-align: center">The Demonstration · <a href="https://github.com/curioustorvald/partband">Fork Me on GitHub!</a></h1>
   <gallery id="gallerymain"></gallery>
+  <hr />
+  <div style="max-width: 768px; padding: 1rem 3rem; margin: 0 auto">
+  <p>The Partitioned Container Band is a system of creating a harmonious and responsive web galleries.</p>
+  <p>Creating web galleries for art collections presents formidable challenges: collection of artworks exhibit highly variable aspect ratios, often comprising hundreds or thousands of images, rendering manual arrangement impractical; and achieving responsive design across devices while preserving visual balance introduces an additional layer of complexity. The Partitioned Container Bands system addresses this challenge by dividing pages into intelligent bands that can be partitioned according to compositional rules; the system automatically selects and positions images based on aspect ratio compatibility. A subsequent optimisation phase further refines partition dimensions to minimize distortion, supporting both horizontal and vertical band orientations, thereby ensuring efficient space utilisation across all device sizes. The outcome is an automated layout engine that transforms chaotic image collections into harmonious and responsive galleries.</p>
+  <p><a href="">Read more about the Partitioned Container Bands here!</a></p>
+  </div>
 </body>
 </html>

@@ -25,6 +25,10 @@ function setColRow(elem, cols, rows) {
   elem.style.gridTemplateRows = '1fr '.repeat(rows).trim()
 }
 
+function rndToColIdx(n) {
+  return (n / 65535 * (COLUMNS/2-1))|0
+}
+
 function mustBeVertical(x) {
   // Handle edge cases
   if (x < 0) return false;
@@ -33,6 +37,14 @@ function mustBeVertical(x) {
   // Special case for p = 1: all non-negative integers
   if (COLUMNS === 1) return x >= 0;
 
+
+  let modulo = x % COLUMNS
+  let row = (x / COLUMNS)|0
+  let thisRowRnd = VERT_INDICES_BY_ROW[row]
+
+  return modulo == thisRowRnd
+
+  /*
   // For other values of p, check if x fits the arithmetic sequence
   // Starting value: (p-1)/2, increment: p
   const start = (COLUMNS - 1) / 2;
@@ -42,6 +54,7 @@ function mustBeVertical(x) {
 
   const diff = x - start;
   return diff % COLUMNS === 0;
+  */
 }
 
 function mustBeFlipped(x) {
@@ -59,7 +72,7 @@ function mustBeFlipped(x) {
 }
 
 class PartitionedBand {
-  DEBUG = 1
+  DEBUG = 0
 
   ord = undefined
   prefix = ''
@@ -700,6 +713,7 @@ class PartitionedBand {
         let isImageNSFW = (10 < ord && ord % 10 != 0) || (10000 <= ord && ord < 100000) || (200000 <= ord && ord <= 400000)
 
         panel.setAttribute("nsfw", isImageNSFW|0)
+        panel.setAttribute("onclick", `viewImage(${ord})`)
       }
     })
 
@@ -883,8 +897,16 @@ class PartitionedBand {
   makeHTMLelement(debuginfo) {
     const container = document.createElement('band');
 
-    container.setAttribute('dir', (mustBeVertical(this.ord)) ? 'v' : 'h')
 
+    // set horz/vert values
+    if (mustBeVertical(this.ord)) {
+      container.setAttribute('dir', 'v')
+      container.style.gridColumn = 'span 1'
+    }
+    else {
+      container.setAttribute('dir', 'h')
+      container.style.gridColumn = 'span 2'
+    }
 
     if (this.DEBUG && debuginfo !== undefined) {
       for (const [k, v] of Object.entries(debuginfo)) {
@@ -1025,7 +1047,7 @@ function renderGallery(images) {
 
       // append E1 and E2 at the last, if the main image is squarish
       if (9/10 <= main.ratio && main.ratio <= 10/9) {
-        if (Math.random() >= 0.5) {
+        if (rnd() >= 0.5) {
           ruleSet.push('E2'); ruleSet.push('E1')
         }
         else {
@@ -1043,7 +1065,7 @@ function renderGallery(images) {
           ruleSet = shuffle(['A', 'B', /*'D', 'E1', 'E2',*/ 'F1', 'F2', 'G', 'I']);
 
         // append E1 and E2 at the last
-        if (Math.random() >= 0.5) {
+        if (rnd() >= 0.5) {
           ruleSet.push('E2'); ruleSet.push('E1')
         }
         else {
@@ -1386,15 +1408,36 @@ function clipLastVertPanel(gallery, bands, imgObjs) {
     const last = bands[bands.length - 1]
     const penult = bands[bands.length - 2]
 
+    // if the last panel is V
     if (last.getAttribute('dir') == 'v') {
-      const lastHeight = parseInt(last.style.height)
-      const penultHeight = parseInt(penult.style.height)
+      // if the panel is not the first in the band, clip it
+      if ((last.getAttribute('ord')|0) % COLUMNS > 0) {
+        const lastHeight = parseInt(last.style.height)
+        const penultHeight = parseInt(penult.style.height)
 
-      // console.log("last", last, "penult", penult)
-      // console.log("lastHgt", lastHeight, "penultHgt", penultHeight)
+        // console.log("last", last, "penult", penult)
+        // console.log("lastHgt", lastHeight, "penultHgt", penultHeight)
 
-      if (lastHeight > penultHeight) {
-        last.style.height = `${penultHeight}px`
+        if (lastHeight > penultHeight) {
+          last.style.height = `${penultHeight}px`
+        }
+      }
+      // if it is the first, expand it
+      else {
+        let imgOrd = getImageOrdFromURL(last.children[0].style.backgroundImage)
+        let imgObj = IMG_OBJS[ordToIndex(imgOrd)]
+        let imgRatio = imgObj.ratio
+
+        // convert it to H
+        last.setAttribute('dir', 'h')
+
+        // calculate new width
+        let newWidth = parseFloat(getComputedStyle(last).width)
+        let newHeight = Math.round(newWidth / imgRatio)|0
+        last.setAttribute('style', `height: ${newHeight}px`)
+        last.children[0].style.width = '100%'
+
+
       }
     }
   }
@@ -1435,9 +1478,14 @@ function getImageOrdFromURL(cssURL) {
   return (cssURL.match(/(\d+)\.webp/)[1])|0
 }
 
+function ordToIndex(ord) {
+  return IMG_OBJS.firstIndexOf(it => it.ord == ord)
+}
+
+let useNSFWsystem = true
 let showNSFW = false
 
-function toggleNSFW() {
+function togglensfw() {
   if (showNSFW) {
     lockNSFW()
   }
@@ -1457,6 +1505,7 @@ function updatePictureInPlace(prefix, imgObjs, nsfw) {
       let altImg = imgObjs.filter(it => it.ord == altOrd)[0]
       if (altImg) {
         panel.style.backgroundImage = `url(${toImageURL(prefix, altOrd)})`
+        panel.setAttribute("onclick", `viewImage(${altOrd})`)
       }
     }
   })
@@ -1466,12 +1515,14 @@ function unlockNSFW() {
   showNSFW = true
   updatePictureInPlace(prefix, IMG_OBJS, showNSFW)
   document.documentElement.style.setProperty('--nsfw-blur-enabled', '0')
+  setStatusLine(document.getElementById(ELEM_ID))
 }
 
 function lockNSFW() {
   showNSFW = false
   updatePictureInPlace(prefix, IMG_OBJS, showNSFW)
   document.documentElement.style.setProperty('--nsfw-blur-enabled', '1')
+  setStatusLine(document.getElementById(ELEM_ID))
 }
 
 function geomean(numbers) {
@@ -1500,17 +1551,26 @@ function adjustBandHeightMultiColumn(imgObjs, columns0) {
   // odd number of columns?
   else {
     let columns = columns0
-    let hcols = (columns / 2)|0 // 1 for columns=3, 2 for columns=5, ...
 
-    // single cluster is arranged like 'h1 h1 v h2 h2'
+    // single cluster is arranged like 'v h1 h1 | * h2 h2' (position of V may vary)
     // 1. set heights for h1s
     // 2. set heights for h2s
     // 3. set height of v as (h1s.height + h2s.height + var(--gaps))
 
+
     // when columns is odd, number of bands in each "cluster" is conveniently equal to the columns count
     for (let i = 0; i < bands.length; i += columns) {
-      let sameRowBandsHi = [...Array((columns/2)|0).keys()].map(it => bands[i + it] ).filter(it => it !== undefined)
-      let sameRowBandsLo = [...Array((columns/2)|0).keys()].map(it => bands[i + hcols + 1 + it] ).filter(it => it !== undefined)
+      let sameBandBattery = [] // guaranteed to be odd number of elems
+      for (let idx = i; idx < i + columns; idx++) {
+        sameBandBattery.push(bands[idx])
+      }
+
+      let thisBandVertIdx = VERT_INDICES_BY_ROW[i / columns]
+
+      let vBand = sameBandBattery[thisBandVertIdx]
+      let hBands = sameBandBattery.filter(it => it !== undefined && it.getAttribute('dir') == 'h')
+      let sameRowBandsHi = hBands.slice(0, (columns - 1) / 2)
+      let sameRowBandsLo = hBands.slice((columns - 1) / 2, columns)
 
       let bandHeightsHi = sameRowBandsHi.map(it => parseInt(it.style.height)) // '123px' -> 123
       let bandGeomeanHi = Math.round(geomean(bandHeightsHi))|0
@@ -1520,8 +1580,10 @@ function adjustBandHeightMultiColumn(imgObjs, columns0) {
       let bandGeomeanLo = Math.round(geomean(bandHeightsLo))|0
       sameRowBandsLo.forEach(it => it.style.height = `${bandGeomeanLo}px`)
 
-      if (bands[i + hcols] !== undefined)
-        bands[i + hcols].style.height = `${bandGeomeanHi + bandGeomeanLo + gap}px`;
+      if (vBand !== undefined) {
+        let gap1 = (sameRowBandsLo.length == 0) ? 0 : gap
+        vBand.style.height = `${bandGeomeanHi + bandGeomeanLo + gap1}px`
+      }
     }
   }
 }
@@ -1539,20 +1601,29 @@ function filterUnsafe(IMG_OBJS) {
   return IMG_OBJS.filter(it => unsafeSet.has(it.ord))
 }
 
-function pack(elemID, prefix0) {
+function pack(elemID, prefix0, disableNSFWprocessing) {
   ELEM_ID = elemID
+
+  if (disableNSFWprocessing) {
+    useNSFWsystem = false
+    showNSFW = true
+    document.documentElement.style.setProperty('--nsfw-blur-enabled', '0')
+  }
+
   loadJson(`${prefix0}.json`, str => {
+    const jsonObj = JSON.parse(str)
     prefix = prefix0
-    IMG_OBJS = JSON.parse(str).arts; precalculateDim(IMG_OBJS)
+    IMG_OBJS = jsonObj.arts; precalculateDim(IMG_OBJS)
 
     IMG_OBJS_SAFE = filterSafe(IMG_OBJS)
     IMG_OBJS_UNSAFE = filterUnsafe(IMG_OBJS)
 
     let gallery = document.getElementById(elemID)
     COLUMNS = Math.round(gallery.clientWidth / (INTERNAL_WIDTH / 2))
+    vertLUT = generateRandomSeq((rnd() * 65536)|0, (IMG_OBJS.length / 2)|0)
+    VERT_INDICES_BY_ROW = vertLUT.map(it => rndToColIdx(it))
 
     _pack()
-
     attachResizeEvent()
   })
 }
@@ -1562,11 +1633,11 @@ function _pack() {
   let imgObjs = (showNSFW) ? IMG_OBJS_UNSAFE : IMG_OBJS_SAFE
 
   if (COLUMNS % 2 == 0) {
-    gallery.style.setProperty('grid-template-columns', `repeat(${(COLUMNS/2)|0}, 1fr)`)
+    gallery.style.setProperty('grid-template-columns', `repeat(${COLUMNS}, 1fr)`)
     gallery.style.setProperty('grid-template-rows', 'unset')
   }
   else {
-    gallery.style.setProperty('grid-template-columns', `repeat(${(COLUMNS/2)|0}, 2fr) 1fr`)
+    gallery.style.setProperty('grid-template-columns', `repeat(${COLUMNS}, 1fr)`)
     gallery.style.setProperty('grid-template-rows', 'repeat(auto-fit, 1fr 1fr)')
   }
 
@@ -1586,12 +1657,14 @@ function attachResizeEvent() {
 function clearGallery(gallery) {
   gallery.innerHTML = ''
   BAND_COUNT = 0
+  resetRng()
 }
 
 function refreshColumnCount() {
   let gallery = document.getElementById(ELEM_ID)
   let oldColumnCount = COLUMNS
   COLUMNS = Math.round(gallery.clientWidth / (INTERNAL_WIDTH / 2))
+  VERT_INDICES_BY_ROW = vertLUT.map(it => rndToColIdx(it))
 
   if (oldColumnCount != COLUMNS) {
     _pack()
@@ -1602,6 +1675,16 @@ function toImageURL(prefix, ord) {
   return `https://cdn.taimuworld.com/${prefix}_thumbs/${ord}.webp`
 }
 
+function viewImage(ord) {
+
+}
+
+let prefixToUnits = {
+  "paintings":["Art","Arts"],
+  "photos":["Picture","Pictures"],
+  "books":["Work","Works"]
+}
+
 let IMG_OBJS = {}
 let IMG_OBJS_SAFE = {}
 let IMG_OBJS_UNSAFE = {}
@@ -1609,5 +1692,7 @@ let ELEM_ID = ''
 let prefix = ''
 let COLUMNS = 0
 let BAND_COUNT = 0
+let vertLUT = [] // index: column # (modulo COLUMNS)
+let VERT_INDICES_BY_ROW = []
 const INTERNAL_WIDTH = 768
 const INT_WIDTH_VERT = INTERNAL_WIDTH / 2

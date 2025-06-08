@@ -47,18 +47,3 @@ bandpanel.leaf {
   border: 1px solid rgba(0, 0, 0, 0.25);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
-
-bandpanel[nsfw="1"] {
-  position: relative;
-  overflow: hidden;
-}
-
-bandpanel[nsfw="1"]::before {
-  content: "";
-  position: absolute;
-  inset: -65536px;
-  background: inherit;
-  z-index: 0;
-  opacity: var(--nsfw-blur-enabled);
-}
-
