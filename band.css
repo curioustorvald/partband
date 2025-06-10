@@ -1,6 +1,8 @@
 * {
   --gaps: 12px;
   box-sizing: border-box;
+  --box-shadow-glass: inset 0  1px 3px rgba(255, 255, 255, 0.7),
+                      inset 0 -1px 2px rgba(0, 0, 0, 0.3);
 }
 
 body {
@@ -43,9 +45,8 @@ bandpanel {
 bandpanel.leaf {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-/*   background: rgba(255, 255, 255, 0.55); */
-  border: 1px solid rgba(0, 0, 0, 0.25);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1),
+              var(--box-shadow-glass);
 }
 
 /* Lazy loading styles */
