@@ -2,7 +2,7 @@
 
 # **Abstract**
 
-When creating web galleries for art collections, web designers often face a variety of formidable challenges: the collections of artworks exhibit highly variable aspect ratios, often including hundreds, if not thousands, of images, hence rendering manual arrangement impractical. Additionally, achieving responsive design across devices while preserving visual balance introduces an additional layer of complexity.
+When creating web galleries for art collections, web designers often face a variety of formidable challenges: the collections of artworks exhibit highly variable aspect ratios, often including hundreds, if not thousands, of images, hence rendering manual arrangement impractical. Additionally, achieving responsive design across devices while preserving visual balance introduces an insurmountable layer of complexity.
 
 The Partitioned Container Bands System addresses these challenges by dividing pages into intelligent bands that can be partitioned according to compositional rules. First, the system automatically selects and positions images based on aspect ratio compatibility. A subsequent optimisation phase then further refines partition dimensions in order to minimise distortion, supporting both horizontal and vertical band orientations, which ensures efficient space utilisation regardless of device sizes. The outcome is an automated layout engine that transforms collections of chaotic images into harmonious and responsive galleries.
 
