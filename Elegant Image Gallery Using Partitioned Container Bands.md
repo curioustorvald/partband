@@ -2,7 +2,9 @@
 
 # **Abstract**
 
-Creating web galleries for art collections presents formidable challenges: collection of artworks exhibit highly variable aspect ratios, often comprising hundreds or thousands of images, rendering manual arrangement impractical; and achieving responsive design across devices while preserving visual balance introduces an additional layer of complexity. The Partitioned Container Bands system addresses this challenge by dividing pages into intelligent bands that can be partitioned according to compositional rules; the system automatically selects and positions images based on aspect ratio compatibility. A subsequent optimisation phase further refines partition dimensions to minimise distortion, supporting both horizontal and vertical band orientations, thereby ensuring efficient space utilisation across all device sizes. The outcome is an automated layout engine that transforms chaotic image collections into harmonious and responsive galleries.
+When creating web galleries for art collections, web designers often face a variety of formidable challenges: the collections of artworks exhibit highly variable aspect ratios, often including hundreds, if not thousands, of images, hence rendering manual arrangement impractical. Additionally, achieving responsive design across devices while preserving visual balance introduces an additional layer of complexity.
+
+The Partitioned Container Bands System addresses these challenges by dividing pages into intelligent bands that can be partitioned according to compositional rules. First, the system automatically selects and positions images based on aspect ratio compatibility. A subsequent optimisation phase then further refines partition dimensions in order to minimise distortion, supporting both horizontal and vertical band orientations, which ensures efficient space utilisation regardless of device sizes. The outcome is an automated layout engine that transforms collections of chaotic images into harmonious and responsive galleries.
 
 # **1. Introduction**
 
