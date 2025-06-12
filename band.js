@@ -25,8 +25,28 @@ function setColRow(elem, cols, rows) {
   elem.style.gridTemplateRows = '1fr '.repeat(rows).trim()
 }
 
+function rndColIdxMax(cols) {
+  return (cols/2)|0
+}
+
+function range(x) {
+  return Array.from({ length: x }, (_, i) => i)
+}
+
 function rndToColIdx(n) {
-  return (n / 65535 * (COLUMNS/2-1))|0
+  return (n / 16777215 * rndColIdxMax(COLUMNS))|0
+}
+
+function constructColMap() {
+  let ret = []
+
+  const max = rndColIdxMax(COLUMNS)
+
+  while (ret.length < IMG_OBJS.length / 2) {
+    shuffle(range(max+1)).forEach(it => ret.push(it))
+  }
+
+  return ret
 }
 
 function mustBeVertical(x) {
@@ -1723,8 +1743,8 @@ function pack(elemID, prefix0, disableNSFWprocessing) {
 
     let gallery = document.getElementById(elemID)
     COLUMNS = Math.round(gallery.clientWidth / (INTERNAL_WIDTH / 2))
-    vertLUT = generateRandomSeq((rnd() * 65536)|0, (IMG_OBJS.length / 2)|0)
-    VERT_INDICES_BY_ROW = vertLUT.map(it => rndToColIdx(it))
+    vertLUT = generateRandomSeq((rnd() * 16777216)|0, (IMG_OBJS.length / 2)|0)
+    VERT_INDICES_BY_ROW = constructColMap()
 
     _pack()
     attachResizeEvent()
@@ -1780,7 +1800,7 @@ function refreshColumnCount() {
   let gallery = document.getElementById(ELEM_ID)
   let oldColumnCount = COLUMNS
   COLUMNS = Math.round(gallery.clientWidth / (INTERNAL_WIDTH / 2))
-  VERT_INDICES_BY_ROW = vertLUT.map(it => rndToColIdx(it))
+  VERT_INDICES_BY_ROW = constructColMap()
 
   if (oldColumnCount != COLUMNS) {
     _pack()
