@@ -22,7 +22,7 @@ The Partitioned Container Bands system solves the challenge of displaying large 
 The system divides galleries into horizontal or vertical bands, each containing one or more images arranged according to compositional rules. Images are automatically selected based on aspect ratio compatibility with available spaces, then refined through optimisation passes that minimise distortion.
 
 ## Usage
-
+On your HTML:
 ```html
 <head>
   ...
@@ -35,9 +35,13 @@ The system divides galleries into horizontal or vertical bands, each containing 
   <gallery id="gallery_id"></gallery>
   ...
 </body>
-pack('gallery-element-id', 'image-collection-prefix', disableNSFW);
 ```
-
+<prefix>.json
+```json
+{
+todo
+}
+```
 ## Documentation
 
 For the comprehensive explanation of the algorithm, implementation details, and design philosophy, please refer to the full article in this repository.
