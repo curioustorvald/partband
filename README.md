@@ -1,5 +1,7 @@
 # Partitioned Container Bands
 
+![Screenshot](./Screenshot_20250619_063048.png)
+
 A sophisticated image gallery layout system that automatically arranges collections of mixed aspect ratio images into harmonious, responsive galleries.
 
 [Live demo link](https://curioustorvald.com/partband/)
