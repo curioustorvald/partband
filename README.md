@@ -30,7 +30,7 @@ The system divides galleries into horizontal or vertical bands, each containing 
   <script src="common.js"></script>
   <script src="band.js"></script>
 </head>
-<body onload="pack('gallery_id', prefix, disable_NSFW?">
+<body onload="pack('gallery_id', prefix, disable_NSFW_filtering?">
   ...
   <gallery id="gallery_id"></gallery>
   ...
