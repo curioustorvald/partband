@@ -36,10 +36,24 @@ On your HTML:
   ...
 </body>
 ```
-<prefix>.json
+On your (prefix).json
 ```json
 {
-todo
+"prefix":"photos",
+"lastupdate":"2025-06-08 05:51 UTC",
+"arts":[
+{"ord":10010, "year":2022, "dim":"1800/2400", "author":"PictureAuthor", "epic":0},
+{"ord":10020, "year":2023, "dim":"3600/2200", "author":"PictureAuthor", "epic":20},
+{"ord":10030, "year":2024, "dim":"7680/4320", "author":"PictureAuthor", "epic":100},
+...
+]
+}
+```
+On `band.js`:
+Edit the `toImageURL(prefix, ord)` to point to your bin of images
+```js
+function toImageURL(prefix, ord) {
+  return `https://yourwebhost/for/images/${prefix}_thumbs/${ord}.webp`
 }
 ```
 ## Documentation
